@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Journal timeline — desktop</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>body{margin:0;padding:40px;background:#e6e4e1}
+.h{font-family:var(--font-heading);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700);margin:0 0 16px}
+.dv-card{max-width:100%;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);overflow:hidden}
+.plate{box-sizing:border-box}</style>
+</head><body>
+<p class="h">Journal timeline — desktop · ref 2b</p>
+<div class="dv-card" style="width:820px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-6);border-bottom:1px solid var(--color-divider)">
+    <span style="font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700)">시댁 한국어 · journal</span>
+    <div style="display:flex;gap:var(--space-2);align-items:center">
+      <button class="btn btn-ghost" type="button">Words</button>
+      <button class="btn btn-ghost" type="button">Practice</button>
+      <button class="btn btn-primary" type="button">New entry</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:64px minmax(0,1fr)">
+    <div style="border-right:1px solid var(--color-divider);padding:var(--space-4) 0;display:flex;flex-direction:column;align-items:center;gap:var(--space-2)">
+      <button class="btn btn-icon btn-ghost" type="button"><i data-lucide="book-open" style="width:17px;height:17px"></i></button>
+      <button class="btn btn-icon btn-ghost" type="button"><i data-lucide="type" style="width:17px;height:17px"></i></button>
+      <button class="btn btn-icon btn-ghost" type="button"><i data-lucide="dumbbell" style="width:17px;height:17px"></i></button>
+      <button class="btn btn-icon btn-ghost" type="button"><i data-lucide="search" style="width:17px;height:17px"></i></button>
+    </div>
+    <div style="padding:var(--space-6) var(--space-8) var(--space-8) var(--space-6)">
+      <div style="display:flex;align-items:baseline;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <span style="font-family:var(--font-heading);font-size:15px;font-feature-settings:'tnum'">Fri 12 Sep</span>
+        <span style="flex:1;height:1px;background:var(--color-divider)"></span>
+        <span style="font-size:11px;font-style:italic;color:var(--color-neutral-700)">dinner with in-laws</span>
+      </div>
+      <h4 style="margin:0 0 var(--space-2);font-size:21px">Two hours at the kitchen table</h4>
+      <p style="margin:0 0 var(--space-3);font-size:15px;line-height:1.75;text-align:justify;hyphens:auto">Finally understood when 수고하셨습니다 is actually used — not as thanks, more like acknowledging someone's effort at the end of a thing. 밑반찬 covers the standing side dishes, not what's cooked for the meal.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--space-8)"><span class="tag tag-outline">수고하셨습니다</span><span class="tag tag-outline">밑반찬</span><span class="tag tag-outline">끓이다</span><span class="tag tag-outline">어색하다</span><span class="tag tag-neutral">2 sentences</span></div>
+
+      <div style="display:flex;align-items:baseline;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <span style="font-family:var(--font-heading);font-size:15px;font-feature-settings:'tnum'">Wed 10 Sep</span>
+        <span style="flex:1;height:1px;background:var(--color-divider)"></span>
+        <span style="font-size:11px;font-style:italic;color:var(--color-neutral-700)">KLEAR ch. 6</span>
+      </div>
+      <div style="display:flex;gap:var(--space-6);align-items:flex-start;margin-bottom:var(--space-8)">
+        <div style="flex:1;min-width:0">
+          <h4 style="margin:0 0 var(--space-2);font-size:21px">Workbook pages</h4>
+          <p style="margin:0;font-size:15px;line-height:1.75;text-align:justify">Photographed the two pages on honorific verb endings. Didn't get through them.</p>
+        </div>
+        <div class="plate" style="width:128px;height:90px;flex:none;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 7px,var(--color-neutral-300) 7px 14px)"></div>
+      </div>
+
+      <div style="display:flex;align-items:baseline;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <span style="font-family:var(--font-heading);font-size:15px;font-feature-settings:'tnum'">Mon 8 Sep</span>
+        <span style="flex:1;height:1px;background:var(--color-divider)"></span>
+        <span style="font-size:11px;font-style:italic;color:var(--color-neutral-700)">TV drama</span>
+      </div>
+      <h4 style="margin:0 0 var(--space-2);font-size:21px">Episode 3, no subtitles</h4>
+      <p style="margin:0;font-size:15px;line-height:1.75;text-align:justify">Caught 어색하다 twice and understood it from the scene rather than translating it.</p>
+<script>lucide.createIcons();</script>
+</body></html>
