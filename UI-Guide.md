@@ -11,7 +11,7 @@ Reference language in all mocks is Korean; meaning language is English.
 
 ## About the design files
 
-`screens/*.html` are **design references created in HTML** — static prototypes showing
+`ui-screens/*.html` are **design references created in HTML** — static prototypes showing
 intended look, layout and copy. They are not production code and are not meant to be
 dropped into the app. Recreate them in the target codebase's environment (React, Vue,
 SwiftUI, native, whatever the project uses) with its established patterns and component
