@@ -1,0 +1,1324 @@
+/*
+ * The pieces the design system does not carry: the shell, the ruled sheet, the dated section rule,
+ * and the familiarity dashes. UI guide, "Components to build".
+ */
+
+/* ── Shell ─────────────────────────────────────────────────────────────────
+   Kicker strip across the top, 64px gutter rail down the left with the dock at
+   its foot, content between. Mobile moves the rail to a bottom bar. */
+
+.shell {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+.kicker {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.kicker-context {
+  font-size: 11.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  margin-right: auto;
+  font-family: var(--font-target);
+}
+
+/* The context label doubles as the way back to the thing it names. The chevron is
+   what makes that legible: without it the label read as a heading, and the only
+   exit from a nested screen looked like decoration. */
+.kicker-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+}
+.kicker-link:hover {
+  color: var(--color-accent-700);
+  text-decoration: underline;
+}
+.kicker-link svg { display: block; margin-bottom: 1px; }
+
+.kicker-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  border-right: 1px solid var(--color-divider);
+}
+
+/* The dock sits at the foot of the rail. */
+.rail-dock {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+/* A hairline across the gutter, marking the way back off from the screen's tools.
+   The whole distinction between the two, since both are now bare icons. */
+.rail-sep {
+  flex: none;
+  width: 26px;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.rail a {
+  color: var(--color-neutral-700);
+  border-radius: var(--radius-md);
+}
+.rail a:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.rail a[aria-current='page'] { color: var(--color-accent); }
+
+.content {
+  padding: var(--space-8) 37px;
+  min-width: 0;
+}
+
+/* Body copy holds a 58–62 character measure, justified with hyphenation. */
+.measure {
+  max-width: 34em;
+  text-align: justify;
+  hyphens: auto;
+}
+
+/* ── Ruled sheet ───────────────────────────────────────────────────────────
+   A 1px rule every 32px, drawn as a background gradient, with line-height
+   matched to the spacing so the text sits on the line rather than across it. */
+
+.ruled {
+  font-family: var(--font-target);
+  font-size: 15px;
+  line-height: var(--rule-height);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--rule-height) - 1px),
+    var(--rule-ink) calc(var(--rule-height) - 1px),
+    var(--rule-ink) var(--rule-height)
+  );
+  background-attachment: local;
+}
+
+textarea.ruled {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  resize: none;
+  color: inherit;
+  background-color: transparent;
+  caret-color: var(--color-accent);
+  overflow: hidden;
+}
+
+/* ── Dated section rule ────────────────────────────────────────────────────
+   Cormorant date on the left, hairline filling the middle, italic source right. */
+
+.dated {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 var(--space-4);
+}
+.dated:first-child { margin-top: 0; }
+
+.dated-date {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dated-fill {
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.dated-source {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+/* ── Familiarity dashes ────────────────────────────────────────────────────
+   Three 14×2px dashes. Gold filled, neutral-300 empty. An estimated value
+   renders identically to a learner-set one, which the UI guide asks for. */
+
+.dashes {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+}
+.dash {
+  width: 14px;
+  height: 2px;
+  background: var(--color-neutral-300);
+}
+.dash-on { background: var(--color-accent); }
+
+/* ── Target-language text ──────────────────────────────────────────────────
+   `--font-cjk` is already in every base stack, so this is only for prose that
+   should read in the body serif inside a heading context. It is not the thing
+   that makes Hangul render. */
+
+.target { font-family: var(--font-target); }
+
+/* A sentence carries a 2px left rule. Gold when encountered, divider grey when
+   it is the learner's own. */
+.sentence {
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-3);
+  font-family: var(--font-target);
+}
+.sentence-mine { border-left-color: var(--color-divider); }
+.sentence-translation {
+  font-style: italic;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Borderless inputs, for the composer and the timeline filter ───────────── */
+
+.input-bare {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  border-radius: 0;
+  padding: var(--space-2) 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  caret-color: var(--color-accent);
+}
+.input-bare:focus-visible {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
+.input-bare::placeholder { color: var(--color-neutral-500); }
+
+/* ── Notebooks grid ────────────────────────────────────────────────────────
+   Two columns, 18px gap. A 3px left border carries the state: gold on the most
+   recently used notebook, neutral on the rest. Colour as stroke, never as fill. */
+
+.nb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.nb-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 18px;
+  border: 1px solid var(--color-divider);
+  border-left: 3px solid var(--color-neutral-400);
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  min-height: 132px;
+}
+.nb-card:hover { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
+.nb-card-active { border-left-color: var(--color-accent); }
+
+.nb-lang {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.nb-card-active .nb-lang { color: var(--color-accent-700); }
+
+.nb-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  line-height: 1.15;
+}
+.nb-focus {
+  font-size: 13px;
+  color: var(--color-neutral-800);
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nb-meta {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-700);
+}
+
+.nb-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  min-height: 132px;
+  border: 1px dashed var(--color-divider);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  color: var(--color-neutral-700);
+}
+.nb-new:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* An empty library says so once, plainly, and offers the one action. */
+.empty {
+  font-size: 15px;
+  color: var(--color-neutral-700);
+  margin-bottom: var(--space-6);
+}
+
+/* ── Shared bits ───────────────────────────────────────────────────────────── */
+
+.section-label {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.section-label:first-child { margin-top: 0; }
+
+/* The filter box in a kicker strip. Narrow, quiet, and not the screen's subject. */
+.input.filter {
+  width: 160px;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* The composer's action bar. 1px top divider on neutral-100, note left, buttons right. */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-6) -37px calc(-1 * var(--space-8));
+  padding: var(--space-3) 37px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-neutral-100);
+}
+.action-note {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--color-neutral-700);
+}
+
+/* ── Timeline ───────────────────────────────────────────────────────────────── */
+
+.tl-entry { margin-bottom: var(--space-8); }
+
+.tl-link {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  color: inherit;
+  text-decoration: none;
+}
+.tl-text { flex: 1; min-width: 0; }
+
+.tl-title {
+  margin: 0 0 var(--space-2);
+  font-size: 21px;
+  font-family: var(--font-heading);
+}
+.tl-link:hover .tl-title { color: var(--color-accent-700); }
+
+/* Two or three lines of the body, as a preview. The full text lives on the entry. */
+.tl-body {
+  margin: 0;
+  font-family: var(--font-target);
+  font-size: 15px;
+  line-height: 1.75;
+  text-align: justify;
+  hyphens: auto;
+  max-width: 34em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tl-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+.tl-tags .tag { text-decoration: none; font-family: var(--font-target); }
+.tl-tags a.tag-outline:hover { background: var(--color-accent-100); }
+
+/* ── Entry detail ───────────────────────────────────────────────────────────── */
+
+.ed-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+.ed-head-text { flex: 1; min-width: 0; }
+
+.ed-source {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+}
+.ed-rule {
+  height: 1px;
+  width: 44px;
+  background: var(--color-accent);
+  margin: 6px 0 var(--space-3);
+}
+.ed-title {
+  margin: 0 0 var(--space-4);
+  font-size: 27px;
+  font-weight: 400;
+}
+
+/* The entry's own number, set large and pale in the margin. Decoration, not a control. */
+.ed-number { text-align: right; flex: none; }
+.ed-numeral {
+  font-family: var(--font-heading);
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-300);
+}
+.ed-numeral-label {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  margin-top: 2px;
+}
+
+/* Pasted text keeps the ruled sheet but sits back from the learner's own words. */
+.ed-pasted {
+  margin-top: var(--space-6);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-divider);
+}
+
+.ed-plates {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-6);
+}
+
+.ed-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.ed-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 14px;
+}
+.ed-word {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: 5px;
+  border-bottom: 1px dotted var(--color-divider);
+  color: inherit;
+  text-decoration: none;
+  font-family: var(--font-target);
+}
+.ed-word:hover { color: var(--color-accent-700); }
+.ed-word-meaning { font-size: 12.5px; text-align: right; }
+
+.ed-sentences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* ── Composer ───────────────────────────────────────────────────────────────── */
+
+.cp-saved { font-size: 12px; }
+
+.cp-head {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  margin-bottom: var(--space-4);
+}
+.cp-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+}
+.cp-source {
+  width: 190px;
+  flex: none;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.cp-body {
+  min-height: 230px;
+  max-width: 34em;
+}
+
+.cp-attachments {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+.cp-attachment { position: relative; display: inline-flex; }
+.cp-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.cp-remove:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.cp-attach { font-size: 12.5px; }
+
+/* ── Words ──────────────────────────────────────────────────────────────────── */
+
+.wd-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px 300px;
+  gap: 0;
+  margin: calc(-1 * var(--space-8)) -37px;
+  min-height: calc(100vh - 57px);
+}
+.wd-list { padding: var(--space-4) var(--space-6) var(--space-6) 37px; }
+.wd-rule { background: var(--color-divider); }
+.wd-detail {
+  padding: var(--space-4) 37px var(--space-6) var(--space-6);
+  background: var(--color-neutral-100);
+}
+
+.wd-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+  color: inherit;
+  text-decoration: none;
+}
+.wd-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+.wd-row-on { background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+
+.wd-row-text { min-width: 0; }
+.wd-term {
+  display: block;
+  font-size: 16px;
+  font-family: var(--font-target);
+}
+.wd-meaning {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-neutral-700);
+}
+.wd-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+}
+.wd-count {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-700);
+}
+
+.wd-detail-term {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+/* The speaker sits beside the term, not under it. UI guide §7. */
+.wd-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* And at 28px on each sentence row, hanging off the right of the gold rule. */
+.wd-sentence-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.wd-sentence-row > .sentence { flex: 1; min-width: 0; }
+.wd-detail-meaning { font-size: 13px; margin-bottom: var(--space-4); }
+.wd-fam { margin-bottom: var(--space-2); }
+.wd-estimate {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-neutral-700);
+  margin: 0;
+}
+.wd-unset { font-size: 12px; padding-left: 0; }
+
+.wd-met { font-size: 13px; line-height: 1.7; }
+.wd-met-row {
+  display: block;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px dotted var(--color-divider);
+  color: inherit;
+  text-decoration: none;
+}
+.wd-met-row:hover { color: var(--color-accent-700); }
+.wd-met-row:last-child { border-bottom: 0; }
+
+.wd-sentences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.wd-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.wd-delete {
+  font-size: 12px;
+  padding-left: 0;
+  margin-top: var(--space-6);
+  color: var(--color-neutral-700);
+}
+.wd-delete:hover { color: var(--color-accent); }
+
+/* The re-encounter line in quick add, when the term was already in the notebook. */
+.qa-note {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-accent-700);
+}
+
+/* ── Plates ─────────────────────────────────────────────────────────────────── */
+
+.plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: hidden;
+  padding: 0;
+  background: var(--color-neutral-200);
+}
+.plate-btn { cursor: pointer; }
+.plate-img { width: 100%; height: 100%; object-fit: cover; }
+.plate-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--color-neutral-700);
+  padding: 4px;
+  overflow: hidden;
+}
+.plate-name {
+  font-size: 9px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plate-empty {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-neutral-200) 0 7px,
+    var(--color-neutral-300) 7px 14px
+  );
+}
+
+/* ── Settings ───────────────────────────────────────────────────────────────
+   Not in the UI guide, so built plainly from the tokens. Prose measure, hairlines
+   between sections, no boxes and no fills. */
+
+.st-page { max-width: 38em; }
+
+.st-heading {
+  font-size: 21px;
+  font-weight: 400;
+  margin: 0 0 var(--space-2);
+}
+
+.st-prose {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-neutral-800);
+  margin: 0 0 var(--space-3);
+}
+.st-prose code {
+  font-size: 12.5px;
+  padding: 1px 4px;
+  background: var(--color-neutral-200);
+  border-radius: var(--radius-sm);
+}
+
+/* The eviction reminder. One line of plain text, per the plan. */
+.st-line {
+  font-size: 13px;
+  color: var(--color-neutral-700);
+  margin: 0 0 var(--space-3);
+}
+
+.st-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.st-ok,
+.st-error,
+.st-warn {
+  font-size: 13px;
+  margin: var(--space-3) 0 0;
+}
+.st-ok { color: var(--color-accent-700); }
+.st-error { color: var(--color-accent-700); font-style: italic; }
+.st-warn {
+  color: var(--color-neutral-800);
+  font-style: italic;
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-3);
+}
+
+.st-key {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.st-key .input { flex: 1; min-width: 0; font-family: var(--font-target); }
+
+.st-plan {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-3);
+}
+.st-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.st-plan-text { min-width: 0; }
+.st-plan-title {
+  display: block;
+  font-family: var(--font-target);
+  font-size: 16px;
+}
+.st-plan-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Workbook sheet and dock ────────────────────────────────────────────────
+   The sheet floats over whatever screen is showing, which stays mounted behind
+   it. Technical plan §7. Not a full-screen takeover: seeing the journal still
+   there is what makes minimizing feel like putting a book down rather than
+   leaving one place for another. */
+
+.wb-sheet {
+  position: fixed;
+  z-index: 30;
+  inset: auto 0 0 0;
+  margin: 0 auto;
+  width: min(760px, calc(100vw - 2 * var(--space-4)));
+  max-height: min(86vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  /* The gold edge is the sheet's one piece of colour, as a stroke, never a fill. */
+  border-top: 2px solid var(--color-accent);
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.wb-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+.wb-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 15px;
+}
+.wb-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.wb-icon { color: var(--color-neutral-700); }
+.wb-icon:hover { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+
+.wb-body {
+  padding: var(--space-6);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.wb-prose { font-size: 15px; margin: 0 0 var(--space-4); }
+
+.wb-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+.wb-count { flex: 1; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+/* The drilled word, set like a term rather than a heading. */
+.wb-term-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.wb-term {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 26px;
+  line-height: 1.15;
+}
+.wb-term-meaning { font-size: 13px; }
+
+.wb-verdict {
+  margin: var(--space-3) 0 0;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--color-neutral-800);
+}
+.wb-verdict-right { color: var(--color-accent-700); }
+
+.wb-better {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.wb-better > .sentence { flex: 1; min-width: 0; }
+
+/* One chip per docked session, at the foot of the rail. No progress bar, no
+   timer, no count. A book left face down on the desk. */
+.rail-dock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.dock-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 52px;
+  padding: 6px 2px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-left: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-800);
+  font: inherit;
+  overflow: hidden;
+}
+.dock-chip:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+
+/* The workbook's own glyph. Sits above the name, and on mobile it is the only thing left that says
+   which exercise this is, since the label is hidden at 44px. */
+.dock-chip-icon {
+  display: flex;
+  color: var(--color-neutral-700);
+  margin-bottom: 1px;
+}
+
+.dock-chip-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-chip-label {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+/* ── Practice ───────────────────────────────────────────────────────────────
+   A contents page. Rows separated by hairlines, each naming what it draws from
+   the notebook. UI guide §8. */
+
+.pr-last { font-size: 12px; }
+.pr-list { display: flex; flex-direction: column; }
+
+.pr-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+.pr-row:last-child { border-bottom: 0; margin-bottom: 0; }
+
+.pr-text { flex: 1; min-width: 0; }
+
+/* Glyph and text share a baseline row of their own, so the row's wider gap stays between the text and
+   the Start button rather than opening up under the glyph. */
+.pr-lead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+.pr-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--color-neutral-700);
+  /* An inline-flex box baselines on its bottom edge, so a 19px glyph would stand above the name's
+     caps. Nudge it down onto the cap line. Transform, so the baseline itself does not move. */
+  transform: translateY(3px);
+}
+.pr-name {
+  font-family: var(--font-heading);
+  font-size: 21px;
+  line-height: 1.2;
+}
+.pr-draws { font-size: 13px; }
+
+/* ── Reflect ────────────────────────────────────────────────────────────────
+   Questions in Cormorant italic gold, answers on the ruled sheet at the same
+   size as the entry body. UI guide §6. */
+
+.rf-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rf-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rf-question-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.rf-question {
+  margin: 0;
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--color-accent-700);
+  line-height: 1.35;
+}
+
+.rf-answer {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* The open answer. Same sheet as a submitted one, so answering does not change how it looks. */
+textarea.rf-input { min-height: 64px; }
+
+.rf-waiting,
+.rf-ended {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-neutral-700);
+}
+
+.rf-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Extract ────────────────────────────────────────────────────────────────
+   A dialog over the entry, which stays visible behind it. Row anatomy comes
+   from the mock: tick, index, term, right-aligned note on one hairline row. */
+
+.ex-dialog { width: min(600px, 100%); max-height: min(78vh, 720px); }
+
+.ex-count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* The lists scroll, the head and the actions do not. A long extraction should not
+   push its own Add button off the bottom of the screen. */
+.ex-lists {
+  overflow-y: auto;
+  min-height: 0;
+  margin: 0 calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+}
+
+.ex-rows { display: flex; flex-direction: column; }
+
+.ex-row {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-divider);
+  cursor: pointer;
+}
+.ex-row:last-child { border-bottom: 0; }
+.ex-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+
+/* The real control, kept off screen but still focusable and still the thing that toggles. */
+.ex-box {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 14px square, gold border, accent-200 when ticked, per the UI guide. */
+.ex-tick {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  align-self: center;
+}
+.ex-tick-on { background: var(--color-accent-200); }
+.ex-box:focus-visible + .ex-tick { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.ex-index {
+  width: 10px;
+  flex: none;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-700);
+}
+
+.ex-term {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-family: var(--font-target);
+}
+
+.ex-note {
+  flex: none;
+  max-width: 15ch;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--color-neutral-700);
+}
+.ex-known { color: var(--color-accent-700); font-style: italic; }
+
+.ex-empty { font-size: 14px; margin: var(--space-3) 0; }
+
+.ex-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-divider);
+  padding-top: var(--space-3);
+}
+.ex-spacer { flex: 1; }
+.ex-quiet { font-size: 13px; }
+
+/* Discarding is available and not encouraged, so it sits under the actions in small type. */
+.ex-discard {
+  align-self: flex-start;
+  font-size: 12px;
+  padding-left: 0;
+  color: var(--color-neutral-700);
+}
+.ex-discard:hover { color: var(--color-accent); }
+
+/* ── Extract's per-item panel ───────────────────────────────────────────────
+   320px on neutral-100, beside the dialog on a wide screen and under it when
+   there is no room. Mock ref 2g. */
+
+.ex-panel {
+  width: 320px;
+  flex: none;
+  align-self: center;
+  padding: var(--space-6);
+  background: var(--color-neutral-100);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: min(78vh, 720px);
+  overflow-y: auto;
+}
+
+.ex-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.ex-panel-of {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+/* One 12×2px dash per item, gold on the one being edited. */
+.ex-progress { display: flex; gap: 3px; flex-wrap: wrap; }
+.ex-pip { width: 12px; height: 2px; background: var(--color-neutral-300); }
+.ex-pip-on { background: var(--color-accent); }
+
+.ex-panel .field { margin-bottom: var(--space-3); }
+.ex-panel .input { font-family: var(--font-target); }
+.ex-note-field { min-height: 72px; }
+.ex-fam { margin-bottom: var(--space-2); }
+
+.ex-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* The backdrop lays the dialog and its panel out side by side, which is what the
+   mock shows, and wraps them when the viewport is too narrow to hold both. */
+.dialog-backdrop { gap: var(--space-4); }
+.dialog-backdrop:has(.ex-panel) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  overflow: auto;
+}
+
+/* ── Speak ──────────────────────────────────────────────────────────────────
+   A player, not an assistant. Quiet until hovered, and it says so when a call
+   fails rather than falling back to a voice that cannot read the language. */
+
+.sp-btn { color: var(--color-neutral-700); flex: none; }
+.sp-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.sp-error {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-accent-700);
+}
+
+/* ── Capture chip ───────────────────────────────────────────────────────────
+   Floats over a selection in any `<Capturable>`. Fixed, because its coordinates
+   come from the range's viewport rect. Hairline and ground, no fill, so it reads
+   as a margin note rather than a toolbar. */
+
+.cap-chip {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-1);
+  transform: translate(-50%, -100%);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+
+/* Selections near the top of the viewport get the chip underneath instead. */
+.cap-chip-below { transform: translate(-50%, 0); }
+
+.cap-btn {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12.5px;
+  padding: 3px var(--space-2);
+}
+
+.cap-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-divider);
+}
+
+/* What just happened. A readout, not a confirmation — the write already landed. */
+.cap-note {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--color-accent-700);
+  padding: 3px var(--space-2);
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────────────
+   Rail becomes a 3-icon bottom bar, tap targets 44px, rules tighten to 30px. */
+
+@media (max-width: 720px) {
+  :root { --rule-height: 30px; }
+
+  .shell {
+    grid-template-columns: 1fr;
+    padding-bottom: 60px;
+  }
+  .kicker { padding: 12px 18px; }
+  .content { padding: var(--space-4) 18px; }
+  .measure { max-width: none; }
+
+  .rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: var(--space-1) 0;
+    background: var(--color-neutral-100);
+    border-right: 0;
+    border-top: 1px solid var(--color-divider);
+  }
+  .rail .btn-icon { width: 44px; height: 44px; }
+  .rail-dock { margin-top: 0; padding-top: 0; }
+
+  /* The hairline turns on its side. The bar reads left to right, so the way back is
+     the leftmost icon and the rule stands between it and the tools. */
+  .rail-sep { width: 1px; height: 22px; }
+
+  .nb-grid { grid-template-columns: minmax(0, 1fr); }
+
+  /* The words split collapses to the index. Picking a word goes to its own view. */
+  .wd-split {
+    grid-template-columns: minmax(0, 1fr);
+    margin: calc(-1 * var(--space-4)) -18px;
+    min-height: 0;
+  }
+  .wd-list { padding: var(--space-4) 18px; }
+  .wd-rule { display: none; }
+  .wd-detail { padding: var(--space-4) 18px var(--space-6); }
+
+  .ed-footer { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
+  .ed-numeral { font-size: 34px; }
+
+  .cp-head { flex-direction: column; gap: var(--space-2); align-items: stretch; }
+  .cp-source { width: 100%; }
+
+  .action-bar {
+    margin: var(--space-6) -18px calc(-1 * var(--space-4));
+    padding: var(--space-3) 18px;
+  }
+
+  .tl-body { -webkit-line-clamp: 4; }
+
+  .st-plan-row { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .st-key { flex-wrap: wrap; }
+  .st-key .input { flex-basis: 100%; }
+
+  /* The chip sits over a native selection menu it cannot measure or extend, so it
+     takes a full tap target and trusts the flip-below rule to stay reachable. */
+  .cap-btn { font-size: 14px; padding: var(--space-2) var(--space-3); }
+
+  /* Extract stops being a dialog beside a panel and becomes one column. */
+  .ex-dialog { max-height: 86vh; }
+  .ex-panel { width: 100%; max-height: none; }
+  .ex-actions { flex-wrap: wrap; }
+  .ex-spacer { display: none; }
+  .ex-note { max-width: 11ch; }
+
+  /* The sheet takes the whole width and sits above the bottom bar rather than
+     under it. The dock becomes a strip of chips in the bar itself, per §6. */
+  .wb-sheet {
+    width: 100%;
+    inset: auto 0 60px 0;
+    max-height: calc(100vh - 120px);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .wb-head { padding: var(--space-2) var(--space-4); }
+  .wb-body { padding: var(--space-4); }
+  .wb-term { font-size: 22px; }
+
+  .rail-dock { flex-direction: row; }
+  .dock-chip { width: 44px; padding: 3px 2px; }
+  .dock-chip-label { display: none; }
+}
