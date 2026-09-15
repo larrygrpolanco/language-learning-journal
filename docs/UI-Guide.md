@@ -24,7 +24,7 @@ from the markup.
 ## Fidelity
 
 **High fidelity.** Colors, type, spacing and copy are final-intent and come from the
-`Classical` design system (`screens/styles.css`, included). Recreate the visual result
+`Classical` design system (`ui-screens/styles.css`, included). Recreate the visual result
 faithfully, but express it through the codebase's own components rather than by copying
 these class names. Layout dimensions given below are the design's intent, not a grid the
 implementation must match to the pixel.
@@ -68,10 +68,10 @@ counting pending items, and nothing is proposed inline while the user writes.
 
 ## Screens
 
-Each maps to one file in `screens/`. The `ref` codes (`2a`…) match the ids in the
+Each maps to one file in `ui-screens/`. The `ref` codes (`2a`…) match the ids in the
 exploration document, so comments on those carry over.
 
-### 1. Notebooks — `screens/notebooks.html` (ref 2a)
+### 1. Notebooks — `ui-screens/notebooks.html` (ref 2a)
 
 Landing screen. A 2-column grid of notebook cards, 18px gap.
 
@@ -81,12 +81,14 @@ Landing screen. A 2-column grid of notebook cards, 18px gap.
   neutral-700 elsewhere) / title (Cormorant Garamond 22px semibold) / focus description
   (13px, 65% ink, max 2 lines) / meta row (11.5px tabular: entries · words · last used).
 - Last cell is a dashed-border "Start a notebook" affordance.
-- Rail: library, search, settings. Header action: `New notebook` (outlined primary).
+- Rail: library, settings. Header action: `New notebook` (outlined primary). The exploration's search
+  icon is dropped here. Searching across notebooks is a cross-notebook view and those are deferred;
+  search lives inside a notebook, as the timeline filter.
 
 Behavior: tapping a card opens that notebook's journal timeline. The dashed cell opens
 notebook creation (title, language, focus, meaning language — fields per §4 of the plan).
 
-### 2. Journal timeline — `screens/journal-timeline.html` (ref 2b)
+### 2. Journal timeline — `ui-screens/journal-timeline.html` (ref 2b)
 
 The notebook's home. One continuous column of entries, newest first.
 
@@ -96,13 +98,18 @@ The notebook's home. One continuous column of entries, newest first.
   of outlined tags — one per word, plus a neutral tag counting sentences.
 - Entries whose attachment is the point (a photographed page) show a 128×90 plate to the
   right of the text instead of tags.
-- Header actions: `Words`, `Practice` (ghost), `New entry` (outlined primary).
+- Header actions: `Words`, `Practice` (ghost), `New entry` (outlined primary). `Practice` is hidden
+  until the workbook layer exists.
+- Header also carries a borderless **filter input** with a 1px bottom divider, placeholder
+  `filter entries…`. Typing narrows the column by substring over title, body and source, and a day
+  with no surviving entry drops its dated hairline. Clearing restores the full timeline. This is the
+  journal's search (plan §13); there is no separate search screen.
 
 Behavior: infinite scroll back through time; clicking an entry opens entry detail;
 clicking a word tag opens that word. Unprocessed entries look no different from processed
 ones — there is no status chrome.
 
-### 3. Entry detail — `screens/entry-detail.html` (ref 2c)
+### 3. Entry detail — `ui-screens/entry-detail.html` (ref 2c)
 
 Reading one day back.
 
@@ -117,7 +124,7 @@ Reading one day back.
 - Header actions: `Reflect`, `Extract` (ghost), `Edit` (secondary).
 - Rail: previous entry, next entry, edit.
 
-### 4. Entry composer — `screens/entry-composer.html` (ref 1c)
+### 4. Entry composer — `ui-screens/entry-composer.html` (ref 1c)
 
 Capture. The whole sheet is for writing.
 
@@ -126,7 +133,8 @@ Capture. The whole sheet is for writing.
 - Body: ruled sheet, min-height 230px, 15px/32px. Korean phrases the learner types can be
   underlined 2px in `--color-accent-300`; that is decoration in the mock, not a feature.
 - Attachment row: plates plus a `+ attach` secondary button.
-- Rail: attach, add word, add sentence, record.
+- Rail: attach, add word, add sentence. No record button. Audio is playback on words and sentences,
+  and spoken input inside workbooks, never capture into the journal (technical plan §9).
 - Action bar: italic note "Entry saves as you write." on the left; `Reflect`, `Extract`
   (ghost) and `Done` (outlined primary) on the right.
 
@@ -134,7 +142,7 @@ Behavior: autosave — there is no explicit save. An entry needs a body or one a
 Quick-add of a single word or sentence from anywhere links to today's entry, creating it
 if needed (plan §9).
 
-### 5. Extract — `screens/extract.html` (ref 2g)
+### 5. Extract — `ui-screens/extract.html` (ref 2g)
 
 A modal over the entry; the entry stays visible and dimmed behind it.
 
@@ -158,7 +166,7 @@ confirmation, and re-extracting an entry only proposes items that are new and ne
 overwrites a field the learner has edited. Proposals may sit indefinitely; there is no
 badge or inbox.
 
-### 6. Reflect — `screens/reflect.html` (ref 2h)
+### 6. Reflect — `ui-screens/reflect.html` (ref 2h)
 
 A short conversation about the entry, in the entry's own shell.
 
@@ -171,7 +179,7 @@ A short conversation about the entry, in the entry's own shell.
 Behavior: the exchange is appended to the entry body, so the journal benefits even if the
 learner never extracts anything. Reflect may optionally end by offering Extract.
 
-### 7. Words — `screens/words.html` (ref 2d)
+### 7. Words — `ui-screens/words.html` (ref 2d)
 
 Index left, detail right, split by a 1px rule; detail column 300px on `#f8f4f4`.
 
@@ -182,29 +190,36 @@ Index left, detail right, split by a 1px rule; detail column 300px on `#f8f4f4`.
 - Detail: term in Cormorant 26px, meaning line, `Familiarity` segmented control,
   **Met in** (dated list of entries, dotted rules), **In sentences** (2px gold left rule),
   `Edit word` block button.
+- A 36×36 ghost icon button (`volume-2`) sits beside the term, and each sentence row under
+  **In sentences** carries one at 28px. Pressing it speaks that line. Audio is generated on press and
+  never stored, so pressing again regenerates it. It reads as a player rather than an assistant, which
+  is what keeps the no-AI-affordances rule intact.
 
 Behavior: familiarity is learner-settable; when unset it is estimated from encounters and
 practice events and should read as the same three dashes. Clicking a "met in" date opens
 that entry.
 
-### 8. Practice — `screens/practice.html` (ref 2e)
+### 8. Practice — `ui-screens/practice.html` (ref 2e)
 
 A contents page, not a dashboard. Four rows separated by hairlines; each row is a
 Cormorant 21px activity name, a 13px muted line **stating what it draws from the
 notebook** ("Draws on 14 recent words"), and a `Start` button — the first one outlined
 primary, the rest secondary. Header right: "last practiced 3 days ago".
 
-### 9. Mobile — `screens/mobile.html` (ref 2f)
+Not in M1. The rail icon and the timeline's `Practice` action stay hidden until the workbook layer
+exists, rather than leading to an empty contents page.
+
+### 9. Mobile — `ui-screens/mobile.html` (ref 2f)
 
 Four 360×660 frames: notebooks, entry detail, words, practice. Same type and rules;
 the rail becomes a 3-icon bottom bar; tap targets ≥44px; the words screen keeps a
 "Quick add a word…" field pinned above the bottom bar. The composer sheet (ref 1d in the
-exploration) slides up over the timeline with the ruled sheet, an attach/camera/mic row
-and `Save`.
+exploration) slides up over the timeline with the ruled sheet, an attach/camera row and
+`Done`. Not `Save` — the entry autosaves, and there is no save button anywhere in the app.
 
 ## Design tokens
 
-From `screens/styles.css`; use the CSS variables rather than the literals where possible.
+From `ui-screens/styles.css`; use the CSS variables rather than the literals where possible.
 
 | Token | Value | Use |
 |---|---|---|
@@ -241,25 +256,32 @@ section rule. All except the last three exist as classes in `styles.css`.
 
 ## Assets
 
-- Icons: **Lucide** (`library, search, settings, book-open, type, dumbbell, pencil,
+- Icons: **Lucide** (`library, search, settings, book-open, type, notebook-tabs, pencil,
   chevron-up, chevron-down, paperclip, camera, mic, quote`), 17px in rails, 19px mobile.
+  `notebook-tabs` means the practice section; each workbook then carries its own glyph from the
+  notebook family (`notebook-pen` for word drill), 19px on its practice row and 15px on its dock
+  chip. The mock used `dumbbell` for practice, which read as a gym rather than a shelf of workbooks.
 - No photography or illustration is used. Every image is a striped placeholder inside a
   `.plate`; replace with real attachment thumbnails.
-- Fonts: Cormorant Garamond and Lora, loaded from Google Fonts by `styles.css`.
+- Fonts: Cormorant Garamond and Lora, **self-hosted**. `styles.css` currently `@import`s them from
+  Google Fonts, which breaks both offline use and Tauri, so that line goes when the tokens are
+  ported. Its fallbacks are also `system-ui, sans-serif`, which degrades a serif design to sans;
+  they become Georgia. Neither face carries Hangul or Han, so target-language text needs its own
+  `--font-target` stack. See the technical plan §2.
 
 ## Files
 
 ```
-screens/styles.css            Classical design system — tokens + component classes
-screens/notebooks.html        2a
-screens/journal-timeline.html 2b
-screens/entry-detail.html     2c
-screens/entry-composer.html   1c
-screens/extract.html          2g
-screens/reflect.html          2h
-screens/words.html            2d
-screens/practice.html         2e
-screens/mobile.html           2f
+ui-screens/styles.css            Classical design system — tokens + component classes
+ui-screens/notebooks.html        2a
+ui-screens/journal-timeline.html 2b
+ui-screens/entry-detail.html     2c
+ui-screens/entry-composer.html   1c
+ui-screens/Extract.html          2g  (capital E on disk; a bundler export, hence the size)
+ui-screens/reflect.html          2h
+ui-screens/words.html            2d
+ui-screens/practice.html         2e
+ui-screens/mobile.html           2f
 ```
 
 The full exploration, including earlier alternatives for the timeline and composer, lives
@@ -267,5 +289,7 @@ in `Language Journal UI.dc.html` in the design project.
 
 ## Not covered here
 
-Search, attachment viewer, notebook creation and settings, notebook copying, the
-activity harnesses themselves, and any cross-notebook view.
+The attachment viewer, notebook creation, the Settings screen, notebook copying, the
+activity harnesses themselves, and any cross-notebook view. Search is no longer open;
+it is the timeline filter specified above. Notebook creation and Settings are built
+straight from the token set, since M1 needs both to be usable.

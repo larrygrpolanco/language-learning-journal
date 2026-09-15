@@ -72,7 +72,7 @@ A notebook is a self-contained learning space with one language and an optional 
 - The same term can exist in two notebooks with different meanings (e.g. *interés* in economics vs. travel). This is intended.
 - Cross-notebook views (e.g. "all my Spanish words") are optional, read-only, and can come later. They never change ownership.
 
-**Copying a notebook**
+**Copying a notebook** (deferred, see the technical plan's build order)
 - Copies all entries, attachments, words, sentences, and links.
 - The learner chooses whether to **keep or reset practice history**.
 - The copy is fully independent after copying (so it can be refined or trimmed freely).
@@ -92,7 +92,6 @@ The journal itself. An entry records a moment of learning: a class, a conversati
 | source | no | Short free text: "class," "dinner with in-laws," "KLEAR ch. 6," "TV drama." |
 | topic | no | Written by the learner or inferred. Describes the entry, not a piece of knowledge. |
 | origin | auto | `learner` or `activity` (see §11). |
-| processing state | auto | `unprocessed`, `proposed`, `reviewed`. Informational only; it never blocks anything. |
 
 \* An entry needs a body or at least one attachment.
 
@@ -120,7 +119,6 @@ A piece of vocabulary. This can be a single word or a fixed multi-word expressio
 | meaning | no | In the notebook's meaning language. Can hold multiple senses. |
 | note | no | Short free text. |
 | familiarity | no | Optional learner-set value: `new`, `getting it`, `got it`. If unset, it's estimated from signals (§10). |
-| edited | auto | True if the learner changed it. Reprocessing never overwrites edited fields. |
 
 Words build up naturally and are the base material every activity draws from.
 
@@ -150,7 +148,11 @@ One real line of the target language.
 
 **Rule:** every word and sentence has at least one encounter. If one is added outside an entry (e.g. from a notebook's word list), it's linked to **today's entry**, which is created if needed. This keeps every piece of knowledge tied to a point in time and means the journal grows even from quick additions.
 
-Re-encountering an existing word creates a new link, not a duplicate word.
+Re-encountering an existing word creates a new link, not a duplicate word. Within a single entry,
+though, a word is encountered once. Adding the same term twice in one sitting, or reprocessing an
+entry that already yielded it, does not add a second link. "Times encountered" therefore means the
+number of distinct entries a word came up in, which is what makes it comparable to first seen and
+last seen.
 
 ---
 
@@ -193,7 +195,8 @@ Quick adds (a single word or sentence) are also available from anywhere in the n
 - Proposals are pre-selected, so **accept all takes one action**. The learner can uncheck, edit, or discard items.
 - Proposals are checked against existing notebook content. A known word becomes a new encounter, not a duplicate.
 - Nothing becomes notebook knowledge without confirmation.
-- Unreviewed proposals can wait indefinitely (an inbox-style "to review" indicator is enough).
+- Unreviewed proposals can wait indefinitely. A draft is surfaced on its own entry when the learner
+  next opens it, and nowhere else. There is no inbox, no badge, and nothing that counts them.
 - Reprocessing an entry only proposes **new** content and never overwrites learner-edited fields.
 
 ---
