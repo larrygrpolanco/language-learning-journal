@@ -65,7 +65,6 @@ A notebook is a self-contained learning space with one language and an optional 
 | language | yes | Target language. |
 | focus | no | Free text describing the notebook's purpose. Also serves as the notebook's profile for LLMs. |
 | meaning language | no | Language used for word meanings and translations (e.g. Spanish-only for a heritage learner, English for a beginner). Defaults to the learner's preference. |
-| language settings | no | e.g. traditional vs. simplified characters, pinyin vs. zhuyin, romanization on/off. |
 | copied from | auto | Set when the notebook is a copy. |
 
 **Scoping rules**
@@ -90,7 +89,7 @@ The journal itself. An entry records a moment of learning: a class, a conversati
 | body | no* | Free text of any length ("what did you learn?"). |
 | attachments | no* | See §6. |
 | title | no | |
-| source | no | Short free text: "class," "dinner with in-laws," "KLEAR ch. 6," "drama." |
+| source | no | Short free text: "class," "dinner with in-laws," "KLEAR ch. 6," "TV drama." |
 | topic | no | Written by the learner or inferred. Describes the entry, not a piece of knowledge. |
 | origin | auto | `learner` or `activity` (see §11). |
 | processing state | auto | `unprocessed`, `proposed`, `reviewed`. Informational only; it never blocks anything. |
@@ -119,10 +118,8 @@ A piece of vocabulary. This can be a single word or a fixed multi-word expressio
 |---|---|---|
 | term | yes | Unique within the notebook (after normalization). |
 | meaning | no | In the notebook's meaning language. Can hold multiple senses. |
-| reading | no | Pinyin, zhuyin, romanization, etc. |
 | note | no | Short free text. |
 | familiarity | no | Optional learner-set value: `new`, `getting it`, `got it`. If unset, it's estimated from signals (§10). |
-| origin | auto | `manual`, `extracted`, `activity`. |
 | edited | auto | True if the learner changed it. Reprocessing never overwrites edited fields. |
 
 Words build up naturally and are the base material every activity draws from.
@@ -139,16 +136,6 @@ One real line of the target language.
 | origin | yes | `encountered`, `mine`, or `corrected` (see below). Defaults to `encountered`. |
 | translation | no | In the notebook's meaning language. |
 | note | no | e.g. why a correction was needed. |
-| speaker/source | no | Short free text: "teacher," "my wife," "textbook." |
-| corrects | conditional | Required when origin is `corrected`: points to the `mine` sentence it fixes. |
-| provenance | auto | `manual`, `extracted`, `activity`; plus an `edited` flag as with words. |
-
-**Origins**
-- **encountered**: heard or read (lesson, transcript, conversation, media).
-- **mine**: something the learner said or wrote.
-- **corrected**: the fixed version of a `mine` sentence, linked back to it.
-
-Sentences connect words to each other, carry grammar without needing a grammar type, and are what activities are built from (dialogs, messages, and story scenes are all sentences). A `mine` → `corrected` pair records a specific mistake and its fix.
 
 ---
 
@@ -174,11 +161,8 @@ These are computed from the units and links above. The learner never enters them
 | Signal | Derived from |
 |---|---|
 | first seen / last seen / times encountered | Entry → Word/Sentence links and entry dates |
-| **active vs. passive word** | Passive: appears only in `encountered` sentences. Active: appears in `mine` or `corrected` sentences. |
-| **struggles** | `mine` → `corrected` pairs; practice events with poor outcomes |
 | grammar patterns | Recurring structures across sentences (LLM-inferred on demand) |
 | topic clusters | Words and sentences that tend to appear in the same entries; entry topics |
-| progress over time | Changes in the learner's `mine` sentences (length, complexity, vocabulary range) across dates |
 | last practiced / practice outcomes | Practice events (§12) |
 | estimated familiarity | Encounters plus practice events, unless the learner has set familiarity |
 | new vs. old mix | first seen plus last practiced |
@@ -201,7 +185,7 @@ Quick adds (a single word or sentence) are also available from anywhere in the n
 | Mode | What it does | Output |
 |---|---|---|
 | **Extract** | An LLM reads an entry and/or its attachments and proposes words and sentences (including `mine`/`corrected` pairs when a correction is visible). | Proposals |
-| **Grill me** | A short reflective conversation with an LLM about the entry ("what was hard?", "how would you say…?"). | The conversation is saved into the entry (the journal benefits even without the other layers), plus optional proposals. |
+| **Reflect** | A short reflective conversation with an LLM about the entry ("what was hard?", "how would you say…?"). | The conversation is saved into the entry (the journal benefits even without the other layers), plus optional proposals. |
 | **Manual** | Add or edit words, sentences, and links directly. | Direct changes |
 
 ### Proposals (the review step)
@@ -225,41 +209,10 @@ An activity requests a context bundle for one notebook, optionally filtered. The
 - **Recent entries:** dates, topics, body text or summaries, sources.
 - **Words:** with meanings, readings, and derived signals (first/last seen, encounter count, active/passive, familiarity, practice history summary).
 - **Sentences:** with origins, translations, and correction pairs.
-- **Struggles:** recent `mine` → `corrected` pairs and poorly performed items.
-
-Example requests an activity might make:
-- entries and words from the last 14 days
-- a mix of recent words and older words not practiced in 30+ days
-- passive words only (to push them into active use)
-- correction pairs from this month
-- everything linked to one specific entry ("practice this lesson")
 
 How an activity uses the bundle, including asking the learner questions or taking feedback to shape the session, is entirely up to that activity.
 
-### 12.2 Activity results (activity → journal)
-When a session ends, an activity returns:
-
-- **Practice events** (always): which words and sentences were used, and how it went.
-- **Learner output** (optional): sentences the learner produced, proposed as `mine`. Any corrections the activity made are proposed as `corrected`, linked to the original.
-- **Newly discovered items** (optional): words or sentences introduced during the session, as proposals.
-- **Session entry** (optional): a short entry with origin `activity` (e.g. "Text-message roleplay: landlord"), so the journal records the practice session.
-
 The journal applies these results. Learner output and new items go through the normal proposal review (§11).
-
-### 12.3 Practice event
-| Field | Notes |
-|---|---|
-| notebook | |
-| timestamp | |
-| activity type | e.g. `dialog`, `text-messages`, `adventure`, `flashcards` |
-| items | References to words and/or sentences |
-| outcome | Optional: `good`, `struggled`, `missed`. Some activities won't report one. |
-| detail | Optional, free-form, owned by the activity |
-
-The journal stores practice events but does not interpret activity-specific details. Scheduling logic (e.g. spaced repetition) belongs to the activities that need it and is derived from practice events.
-
-### 12.4 Generated media
-Audio, images, and generated scripts belong to the **activity layer**. They may reference the notebook and the session entry, but they are not journal units.
 
 ---
 
@@ -267,7 +220,7 @@ Audio, images, and generated scripts belong to the **activity layer**. They may 
 
 The app must be fully useful to someone who never processes anything or runs any activities:
 - Notebooks, entries, and attachments work without the other layers.
-- "Grill me" still adds value by enriching the entry.
+- "Reflect" still adds value by enriching the entry.
 - Browsing, searching, and reading back over time (a timeline of learning) are core journal features, not add-ons.
 - The knowledge and activity layers appear as options, not requirements.
 
@@ -289,17 +242,6 @@ The app must be fully useful to someone who never processes anything or runs any
 - LLM prompts, models, and providers
 - Media generation pipelines
 - UI design
-
----
-
-## 16. Open questions
-
-1. **Word identity:** is normalized term + notebook enough, or do homographs within a single notebook need separate words? (Current default: one word per term; multiple senses go in the meaning field.)
-2. **Sentence deduplication:** should identical text from different entries become one sentence with multiple encounters? (Suggested: yes.)
-3. **Deletion:** what happens to links and practice events when a word, sentence, or entry is deleted? (Suggested: delete links; keep practice events but mark their references as removed.)
-4. **Segmentation quality:** how much should the learner be able to correct automatic Word → Sentence links, especially for Chinese and Korean?
-5. **Audio on sentences:** should a sentence be able to carry learner-recorded or source audio as a raw attachment in the future?
-6. **Proposal lifetime:** do stale unreviewed proposals ever expire, or do they wait forever?
 
 ---
 
