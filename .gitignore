@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# deps and build
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# tauri
+src-tauri/target/
+
+# editor / os
+.snowflake/
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
