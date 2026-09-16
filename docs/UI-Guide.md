@@ -98,8 +98,8 @@ The notebook's home. One continuous column of entries, newest first.
   of outlined tags — one per word, plus a neutral tag counting sentences.
 - Entries whose attachment is the point (a photographed page) show a 128×90 plate to the
   right of the text instead of tags.
-- Header actions: `Words`, `Practice` (ghost), `New entry` (outlined primary). `Practice` is hidden
-  until the workbook layer exists.
+- Header actions: `Words`, `Sentences`, `Practice` (ghost), `New entry` (outlined primary). `Practice`
+  is hidden until the workbook layer exists.
 - Header also carries a borderless **filter input** with a 1px bottom divider, placeholder
   `filter entries…`. Typing narrows the column by substring over title, body and source, and a day
   with no surviving entry drops its dated hairline. Clearing restores the full timeline. This is the
@@ -179,9 +179,12 @@ A short conversation about the entry, in the entry's own shell.
 Behavior: the exchange is appended to the entry body, so the journal benefits even if the
 learner never extracts anything. Reflect may optionally end by offering Extract.
 
-### 7. Words — `ui-screens/words.html` (ref 2d)
+### 7. Words and sentences — `ui-screens/words.html` (ref 2d)
 
-Index left, detail right, split by a 1px rule; detail column 300px on `#f8f4f4`.
+Index left, detail right, split by a 1px rule; detail column 300px on `#f8f4f4`. One frame, used by
+both sections. Only the mock for words exists.
+
+**Words.**
 
 - List rows: term 16px, meaning 12.5px muted beneath, hairline between rows. Right side of
   each row: **familiarity as three 14×2px dashes** (gold = filled, `#d7d3d3` = empty) and
@@ -191,13 +194,36 @@ Index left, detail right, split by a 1px rule; detail column 300px on `#f8f4f4`.
   **Met in** (dated list of entries, dotted rules), **In sentences** (2px gold left rule),
   `Edit word` block button.
 - A 36×36 ghost icon button (`volume-2`) sits beside the term, and each sentence row under
-  **In sentences** carries one at 28px. Pressing it speaks that line. Audio is generated on press and
-  never stored, so pressing again regenerates it. It reads as a player rather than an assistant, which
-  is what keeps the no-AI-affordances rule intact.
+  **In sentences** carries one at 28px. Pressing it speaks that line. The first press keeps the clip on
+  that word or sentence, so every press after it is instant and it still works offline. It reads as a
+  player rather than an assistant, which is what keeps the no-AI-affordances rule intact.
 
 Behavior: familiarity is learner-settable; when unset it is estimated from encounters and
 practice events and should read as the same three dashes. Clicking a "met in" date opens
-that entry.
+that entry. Each row under **In sentences** opens that sentence. Editing gives `Regenerate audio`
+above the delete, present only once a clip exists, since with none the play button is already the way
+to get one. Renaming the term drops the clip, which spoke the old one.
+
+**Sentences.** Added after M5, no mock. Same frame, different rows, because a sentence is long where a
+term is short and has no useful alphabetical order.
+
+- Newest first, not alphabetical.
+- List rows: the sentence clamped to two lines in the target face at 14.5px, translation 12.5px muted
+  beneath, and its origin on the right in 11px uppercase — `heard`, `mine`, `corrected`. Only
+  `corrected` is coloured, in gold-700, because it is the only origin that says something happened. The
+  2px origin rule is saved for the detail pane, where there is one sentence rather than forty.
+- Section label is "All sentences", or "N matching" under a filter, or "N from Fri 12 Sep" when scoped
+  to an entry, in which case a small `show all` sits on the same line.
+- Detail: the sentence on its 2px left rule with a `volume-2` beside it, italic translation, the note,
+  a `Where it came from` segmented control carrying the same three origins, **Corrects** when this one
+  fixes another, **Met in**, **Words in it** as outlined tags, `Edit sentence` block button.
+- Editing gives Sentence, Translation and Note fields, then `Regenerate audio` and `Delete this
+  sentence` below the actions in the same muted 12px as the words screen's delete.
+
+Behavior: the origin control writes immediately, like familiarity does. **Corrects** is shown whenever
+the link exists, because that control can drop it and a sentence that quietly stopped correcting
+something would be worse than the line of text it costs to say so. Editing the text re-derives which
+words appear in it, and drops the kept clip, which spoke the old wording.
 
 ### 8. Practice — `ui-screens/practice.html` (ref 2e)
 
@@ -212,7 +238,8 @@ exists, rather than leading to an empty contents page.
 ### 9. Mobile — `ui-screens/mobile.html` (ref 2f)
 
 Four 360×660 frames: notebooks, entry detail, words, practice. Same type and rules;
-the rail becomes a 3-icon bottom bar; tap targets ≥44px; the words screen keeps a
+the rail becomes a bottom bar of 44px tap targets, four section icons after the way back;
+the words screen keeps a
 "Quick add a word…" field pinned above the bottom bar. The composer sheet (ref 1d in the
 exploration) slides up over the timeline with the ruled sheet, an attach/camera row and
 `Done`. Not `Save` — the entry autosaves, and there is no save button anywhere in the app.

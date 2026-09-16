@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, Library, NotebookTabs, Type } from 'lucide-react'
 import { db } from '../db/db'
 import { normalizeTerm } from '../db/normalize'
 import { signalsFor, type WordSignals } from '../journal/derive'
-import { setFamiliarity, updateWord } from '../journal/writes'
-import { RailLink, SectionLabel, Shell } from '../ui/Shell'
+import { deleteWord, setFamiliarity, updateWord } from '../journal/writes'
+import { LibraryBack, SectionLabel, SectionRail, Shell } from '../ui/Shell'
 import { Dashes } from '../ui/Dashes'
 import { QuickAdd } from '../ui/QuickAdd'
 import { Speak } from '../ui/Speak'
+import { Regenerate } from '../ui/Regenerate'
 import { useNotebook } from '../ui/hooks'
 import { plural, shortDate } from '../ui/format'
 import type { Entry, Familiarity, Id, Sentence, Word } from '../db/types'
@@ -77,50 +77,34 @@ export const Words = () => {
           </button>
         </>
       }
-      back={
-        <RailLink to="/" label="Back to the library">
-          <Library size={17} />
-        </RailLink>
-      }
-      rail={
-        <>
-          <RailLink to={`/n/${nb}`} label="Journal">
-            <BookOpen size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/words`} label="Words" end={false}>
-            <Type size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/practice`} label="Practice">
-            <NotebookTabs size={17} />
-          </RailLink>
-        </>
-      }
+      back={<LibraryBack />}
+      rail={<SectionRail nb={nb} />}
     >
       {rows === undefined ? null : rows.length === 0 ? (
         <p className="empty">No words yet. They build up on their own as you write.</p>
       ) : (
-        <div className="wd-split">
-          <div className="wd-list">
+        <div className="ix-split">
+          <div className="ix-list">
             <SectionLabel>{needle === '' ? 'All words' : `${visible.length} matching`}</SectionLabel>
             {visible.map(({ word, signals }) => (
               <Link
                 key={word.id}
                 to={`/n/${nb}/words/${word.id}`}
-                className={word.id === id ? 'wd-row wd-row-on' : 'wd-row'}
+                className={word.id === id ? 'ix-row ix-row-on' : 'ix-row'}
               >
-                <span className="wd-row-text">
+                <span className="ix-row-text">
                   <span className="wd-term">{word.term}</span>
-                  {word.meaning ? <span className="wd-meaning">{word.meaning}</span> : null}
+                  {word.meaning ? <span className="ix-row-sub">{word.meaning}</span> : null}
                 </span>
-                <span className="wd-row-meta">
+                <span className="ix-row-meta">
                   <Dashes familiarity={signals.familiarity} />
-                  <span className="wd-count">{signals.timesEncountered}×</span>
+                  <span className="ix-count">{signals.timesEncountered}×</span>
                 </span>
               </Link>
             ))}
           </div>
-          <div className="wd-rule" />
-          <div className="wd-detail">
+          <div className="ix-rule" />
+          <div className="ix-detail">
             {id ? (
               <WordDetail nb={nb} wordId={id} language={notebook?.language ?? ''} />
             ) : (
@@ -170,23 +154,28 @@ const WordDetail = ({ nb, wordId, language }: { nb: Id; wordId: Id; language: st
   const { word, entries, sentences, signals } = data
 
   if (editing) {
-    return <WordEdit word={word} onClose={() => setEditing(false)} />
+    return <WordEdit word={word} language={language} onClose={() => setEditing(false)} />
   }
 
   return (
     <>
-      <div className="wd-detail-head">
-        <div className="wd-detail-term">{word.term}</div>
-        <Speak text={word.term} language={language} title={`Speak ${word.term}`} />
+      <div className="ix-detail-head">
+        <div className="ix-detail-term">{word.term}</div>
+        <Speak
+          text={word.term}
+          language={language}
+          title={`Speak ${word.term}`}
+          owner={{ type: 'word', id: word.id }}
+        />
       </div>
       {word.meaning || word.note ? (
-        <div className="text-muted wd-detail-meaning">
+        <div className="text-muted ix-detail-sub">
           {[word.meaning, word.note].filter(Boolean).join(' · ')}
         </div>
       ) : null}
 
       <SectionLabel>Familiarity</SectionLabel>
-      <div className="seg wd-fam">
+      <div className="seg ix-seg">
         {FAMILIARITIES.map((f) => (
           <label key={f} className="seg-opt">
             <input
@@ -210,9 +199,9 @@ const WordDetail = ({ nb, wordId, language }: { nb: Id; wordId: Id; language: st
       )}
 
       <SectionLabel>Met in</SectionLabel>
-      <div className="wd-met">
+      <div className="ix-met">
         {entries.map((e: Entry) => (
-          <Link key={e.id} to={`/n/${nb}/e/${e.id}`} className="wd-met-row">
+          <Link key={e.id} to={`/n/${nb}/e/${e.id}`} className="ix-met-row">
             {shortDate(e.date)} · {e.title ?? 'Untitled'}
           </Link>
         ))}
@@ -221,16 +210,23 @@ const WordDetail = ({ nb, wordId, language }: { nb: Id; wordId: Id; language: st
       {sentences.length > 0 ? (
         <>
           <SectionLabel>In sentences</SectionLabel>
-          <div className="wd-sentences">
+          <div className="sentence-list">
             {sentences.map((s: Sentence) => (
-              <div key={s.id} className="wd-sentence-row">
-                <div
+              <div key={s.id} className="sentence-row">
+                <Link
+                  to={`/n/${nb}/sentences/${s.id}`}
                   className={s.origin === 'encountered' ? 'sentence' : 'sentence sentence-mine'}
                 >
                   {s.text}
                   {s.translation ? <div className="sentence-translation">{s.translation}</div> : null}
-                </div>
-                <Speak text={s.text} language={language} size={28} title="Speak this sentence" />
+                </Link>
+                <Speak
+                  text={s.text}
+                  language={language}
+                  size={28}
+                  title="Speak this sentence"
+                  owner={{ type: 'sentence', id: s.id }}
+                />
               </div>
             ))}
           </div>
@@ -244,7 +240,15 @@ const WordDetail = ({ nb, wordId, language }: { nb: Id; wordId: Id; language: st
   )
 }
 
-const WordEdit = ({ word, onClose }: { word: Word; onClose: () => void }) => {
+const WordEdit = ({
+  word,
+  language,
+  onClose,
+}: {
+  word: Word
+  language: string
+  onClose: () => void
+}) => {
   const [term, setTerm] = useState(word.term)
   const [meaning, setMeaning] = useState(word.meaning ?? '')
   const [note, setNote] = useState(word.note ?? '')
@@ -256,11 +260,7 @@ const WordEdit = ({ word, onClose }: { word: Word; onClose: () => void }) => {
   }
 
   const remove = async () => {
-    await db.transaction('rw', [db.words, db.encounters, db.wordInSentences], async () => {
-      await db.encounters.where('targetId').equals(word.id).delete()
-      await db.wordInSentences.where('wordId').equals(word.id).delete()
-      await db.words.delete(word.id)
-    })
+    await deleteWord(word.id)
     navigate(`/n/${word.notebookId}/words`)
   }
 
@@ -295,7 +295,7 @@ const WordEdit = ({ word, onClose }: { word: Word; onClose: () => void }) => {
           rows={3}
         />
       </div>
-      <div className="wd-edit-actions">
+      <div className="ix-edit-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           Cancel
         </button>
@@ -303,7 +303,13 @@ const WordEdit = ({ word, onClose }: { word: Word; onClose: () => void }) => {
           Save
         </button>
       </div>
-      <button type="button" className="btn btn-ghost wd-delete" onClick={() => void remove()}>
+      <Regenerate
+        target={{ type: 'word', id: word.id }}
+        text={word.term}
+        language={language}
+        has={word.audioMediaId !== undefined}
+      />
+      <button type="button" className="btn btn-ghost ix-delete" onClick={() => void remove()}>
         Delete this word
       </button>
     </form>

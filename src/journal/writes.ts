@@ -140,7 +140,7 @@ export const updateWord = async (
   patch: { term?: string; meaning?: string; note?: string },
   d: JournalDb = db,
 ): Promise<void> => {
-  await d.transaction('rw', [d.words, d.sentences, d.wordInSentences, d.notebooks], async () => {
+  await d.transaction('rw', [d.words, d.sentences, d.wordInSentences, d.notebooks, d.media], async () => {
     const word = await d.words.get(wordId)
     if (!word) return
 
@@ -157,6 +157,14 @@ export const updateWord = async (
       if (patch.note.trim() === '') delete next.note
       else next.note = patch.note.trim()
     }
+
+    // A renamed term makes the kept clip speak the old one. Compared on `term` rather than `termKey`
+    // because the clip is of what is written, so a change of case alone is still a different reading.
+    if (next.term !== word.term && next.audioMediaId !== undefined) {
+      await d.media.delete(next.audioMediaId)
+      delete next.audioMediaId
+    }
+
     await d.words.put(next)
 
     // A renamed term appears in a different set of sentences, so its derived links are now wrong.
@@ -185,6 +193,35 @@ export const setFamiliarity = async (
   if (familiarity === undefined) delete next.familiarity
   else next.familiarity = familiarity
   await d.words.put(next)
+}
+
+/**
+ * Deletes a word, its encounters, and its sentence links.
+ *
+ * The entries it was met in survive one encounter lighter, unless an entry has nothing else in it, in
+ * which case it was only ever a home for this word and `pruneEntryIfEmpty` takes it. That is the same
+ * rule the composer runs on close, applied from the other direction.
+ */
+export const deleteWord = async (wordId: Id, d: JournalDb = db): Promise<void> => {
+  await d.transaction(
+    'rw',
+    [d.words, d.entries, d.attachments, d.encounters, d.wordInSentences, d.media],
+    async () => {
+      const word = await d.words.get(wordId)
+      if (!word) return
+
+      const encounters = await d.encounters.where('targetId').equals(wordId).toArray()
+      const links = await d.wordInSentences.where('wordId').equals(wordId).toArray()
+      await d.wordInSentences.bulkDelete(links.map((l) => l.id))
+      await d.encounters.bulkDelete(encounters.map((e) => e.id))
+      if (word.audioMediaId) await d.media.delete(word.audioMediaId)
+      await d.words.delete(wordId)
+
+      for (const entryId of new Set(encounters.map((e) => e.entryId))) {
+        await pruneEntryIfEmpty(entryId, d)
+      }
+    },
+  )
 }
 
 export interface AddAttachmentInput {
@@ -238,6 +275,58 @@ export const addAttachment = async (input: AddAttachmentInput, d: JournalDb = db
     await d.attachments.add(attachment)
     return attachment.id
   })
+
+/** A word or a sentence, as the owner of a kept clip. Same polymorphism as an encounter's target. */
+export type AudioTarget = { type: EncounterTarget; id: Id }
+
+/**
+ * Keeps generated speech against a word or a sentence, replacing whatever was there.
+ *
+ * Words and sentences are the curated set, so audio kept here grows with the notebook's vocabulary
+ * rather than with how much the app gets used. That is what separates it from the clip cache in
+ * `ai/speech.ts`, which is memory only and bounded, and it is why this needs no eviction policy.
+ *
+ * The media row deliberately has no `Attachment`. An attachment says raw material belongs to an entry
+ * (§5), and this clip belongs to the term. `deleteNotebook` walks `media` by notebook, so the cascade
+ * already covers it, and the export already writes it as `media/<id>.mp3`.
+ */
+export const setItemAudio = async (
+  target: AudioTarget,
+  bytes: Blob,
+  voice: string,
+  d: JournalDb = db,
+): Promise<void> => {
+  await d.transaction('rw', [d.media, d.words, d.sentences], async () => {
+    if (target.type === 'word') {
+      const row = await d.words.get(target.id)
+      if (!row) return
+      await d.words.put({ ...row, audioMediaId: await putClip(row, bytes, voice, d) })
+    } else {
+      const row = await d.sentences.get(target.id)
+      if (!row) return
+      await d.sentences.put({ ...row, audioMediaId: await putClip(row, bytes, voice, d) })
+    }
+  })
+}
+
+/** Writes the new clip and drops the one it supersedes. Returns the new media id. */
+const putClip = async (
+  owner: { notebookId: Id; audioMediaId?: Id },
+  bytes: Blob,
+  voice: string,
+  d: JournalDb,
+): Promise<Id> => {
+  const media: Media = compact({
+    id: newId(),
+    notebookId: owner.notebookId,
+    mime: bytes.type || 'audio/mpeg',
+    bytes,
+    voice,
+  })
+  await d.media.add(media)
+  if (owner.audioMediaId) await d.media.delete(owner.audioMediaId)
+  return media.id
+}
 
 export const deleteAttachment = async (attachmentId: Id, d: JournalDb = db): Promise<void> => {
   await d.transaction('rw', [d.attachments, d.media], async () => {
@@ -470,6 +559,90 @@ export const deriveWordLinks = async (
       await d.wordInSentences.delete(have.id)
     }
   }
+}
+
+/**
+ * Edits a sentence in place.
+ *
+ * Read-modify-`put` for the same reason `setFamiliarity` is: clearing a translation means the key is
+ * absent, and writing `undefined` into it would put the key in the record and then in the export
+ * bundle as a null nobody meant to write.
+ */
+export const updateSentence = async (
+  sentenceId: Id,
+  patch: { text?: string; translation?: string; note?: string; origin?: SentenceOrigin },
+  d: JournalDb = db,
+): Promise<void> => {
+  await d.transaction('rw', [d.sentences, d.words, d.wordInSentences, d.notebooks, d.media], async () => {
+    const sentence = await d.sentences.get(sentenceId)
+    if (!sentence) return
+
+    const next: Sentence = { ...sentence }
+    if (patch.text !== undefined && patch.text.trim() !== '') next.text = patch.text.trim()
+    if (patch.translation !== undefined) {
+      if (patch.translation.trim() === '') delete next.translation
+      else next.translation = patch.translation.trim()
+    }
+    if (patch.note !== undefined) {
+      if (patch.note.trim() === '') delete next.note
+      else next.note = patch.note.trim()
+    }
+    if (patch.origin !== undefined) {
+      next.origin = patch.origin
+      // Only a correction corrects something. Moving off that origin drops the pointer rather than
+      // leaving a sentence that claims to fix another one while calling itself the learner's own.
+      if (patch.origin !== 'corrected') delete next.correctsId
+    }
+
+    // Edited text makes the kept clip speak the old wording.
+    if (next.text !== sentence.text && next.audioMediaId !== undefined) {
+      await d.media.delete(next.audioMediaId)
+      delete next.audioMediaId
+    }
+
+    await d.sentences.put(next)
+
+    // Edited text holds a different set of words, so the derived links are now wrong.
+    if (next.text !== sentence.text) await deriveWordLinks(next, d)
+  })
+}
+
+/**
+ * Deletes a sentence, its encounters, and its word links.
+ *
+ * Two things go with it that are easy to miss. Any correction pointing at this sentence loses its
+ * `correctsId`, because a dangling id would survive into the export bundle and `readable/` with
+ * nothing on the other end. And an entry left with nothing in it gets pruned, same as `deleteWord`.
+ */
+export const deleteSentence = async (sentenceId: Id, d: JournalDb = db): Promise<void> => {
+  await d.transaction(
+    'rw',
+    [d.sentences, d.entries, d.attachments, d.encounters, d.wordInSentences, d.media],
+    async () => {
+      const sentence = await d.sentences.get(sentenceId)
+      if (!sentence) return
+
+      const encounters = await d.encounters.where('targetId').equals(sentenceId).toArray()
+      const links = await d.wordInSentences.where('sentenceId').equals(sentenceId).toArray()
+      await d.wordInSentences.bulkDelete(links.map((l) => l.id))
+      await d.encounters.bulkDelete(encounters.map((e) => e.id))
+      if (sentence.audioMediaId) await d.media.delete(sentence.audioMediaId)
+
+      const siblings = await d.sentences.where('notebookId').equals(sentence.notebookId).toArray()
+      for (const s of siblings) {
+        if (s.correctsId !== sentenceId) continue
+        const orphan: Sentence = { ...s }
+        delete orphan.correctsId
+        await d.sentences.put(orphan)
+      }
+
+      await d.sentences.delete(sentenceId)
+
+      for (const entryId of new Set(encounters.map((e) => e.entryId))) {
+        await pruneEntryIfEmpty(entryId, d)
+      }
+    },
+  )
 }
 
 /** Autosave target. Writes the whole entry record, debounced by the composer. */

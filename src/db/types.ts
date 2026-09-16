@@ -62,6 +62,15 @@ export interface Media {
   width?: number
   height?: number
   durationMs?: number
+  /**
+   * On generated speech, the voice it was spoken in.
+   *
+   * Recorded because it is not derivable from anywhere else. The language is, from the notebook the
+   * clip's word belongs to, so that is not stored twice. Without this a clip in the export bundle is
+   * unprovenanced binary, and changing `DEFAULT_VOICE` in a later build would silently leave a
+   * notebook half in one voice and half in another with no way to tell which.
+   */
+  voice?: string
 }
 
 export interface Word {
@@ -74,6 +83,13 @@ export interface Word {
   note?: string
   /** Unset means estimate it from signals. */
   familiarity?: Familiarity
+  /**
+   * The kept clip of this term being spoken, once the learner has played it once.
+   *
+   * Un-indexed on purpose. It is only ever followed forwards, by id, from a word already in hand.
+   * Renaming the term drops it, because the clip speaks the old one.
+   */
+  audioMediaId?: Id
   createdAt: Iso
   updatedAt: Iso
 }
@@ -87,6 +103,8 @@ export interface Sentence {
   note?: string
   /** Set on a 'corrected' sentence, points at the 'mine' one it fixes. */
   correctsId?: Id
+  /** As `Word.audioMediaId`. Editing the text drops it. */
+  audioMediaId?: Id
   createdAt: Iso
 }
 

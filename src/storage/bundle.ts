@@ -266,10 +266,12 @@ const withEmptyTables = (d: NotebookData): NotebookData => ({
 /**
  * Rewrites every id in a notebook so it can sit alongside the original.
  *
- * The fiddly part is that ids are referenced from eight places and two of them are polymorphic:
+ * The fiddly part is that ids are referenced from ten places and two of them are polymorphic:
  * `Encounter.targetId` and `PracticeEvent.targetId` point at either a word or a sentence depending on
  * their own `targetType`. Remapping those against the wrong table silently rewires the journal, which
- * is exactly the class of bug the round-trip test exists to catch.
+ * is exactly the class of bug the round-trip test exists to catch. `Word.audioMediaId` and
+ * `Sentence.audioMediaId` are the same hazard one step quieter, since a clip pointing into the original
+ * notebook's media would play the right words and still be the wrong record.
  */
 export const withFreshIds = (bundle: NotebookBundle, newId: () => Id): NotebookBundle => {
   const { data } = bundle
@@ -312,10 +314,15 @@ export const withFreshIds = (bundle: NotebookBundle, newId: () => Id): NotebookB
       const id = media.get(m.id)!
       return { ...m, id, notebookId, file: `media/${id}.${extForMime(m.mime)}` }
     }),
-    words: data.words.map((w) => ({ ...w, id: words.get(w.id)!, notebookId })),
+    words: data.words.map((w) => {
+      const out: Word = { ...w, id: words.get(w.id)!, notebookId }
+      if (w.audioMediaId !== undefined) out.audioMediaId = media.get(w.audioMediaId) ?? w.audioMediaId
+      return out
+    }),
     sentences: data.sentences.map((s) => {
       const out: Sentence = { ...s, id: sentences.get(s.id)!, notebookId }
       if (s.correctsId !== undefined) out.correctsId = sentences.get(s.correctsId) ?? s.correctsId
+      if (s.audioMediaId !== undefined) out.audioMediaId = media.get(s.audioMediaId) ?? s.audioMediaId
       return out
     }),
     encounters: data.encounters.map((e) => ({

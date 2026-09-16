@@ -178,20 +178,22 @@ export const EntryDetail = () => {
               <SectionLabel>Sentences</SectionLabel>
               <div className="ed-sentences">
                 {sentences.map((s) => (
-                  <div key={s.id} className="wd-sentence-row">
-                    <div
+                  <div key={s.id} className="sentence-row">
+                    <Link
+                      to={`/n/${nb}/sentences/${s.id}`}
                       className={s.origin === 'encountered' ? 'sentence' : 'sentence sentence-mine'}
                     >
                       {s.text}
                       {s.translation ? (
                         <div className="sentence-translation">{s.translation}</div>
                       ) : null}
-                    </div>
+                    </Link>
                     <Speak
                       text={s.text}
                       language={notebook?.language ?? ''}
                       size={28}
                       title="Speak this sentence"
+                      owner={{ type: 'sentence', id: s.id }}
                     />
                   </div>
                 ))}

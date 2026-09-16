@@ -23,7 +23,7 @@ Everything below follows from these. They were chosen for simplicity, and each o
 | The thing the learner owns is a single exportable file | Backup and device transfer are one action each |
 | One device is home. Others hold copies | No sync, no merge, no conflict resolution, ever |
 | AI calls go straight to xAI with the learner's own key | No proxy, no backend, no usage billing to absorb |
-| Generated audio and images live only in the session unless saved | Storage stays small, nothing accumulates silently |
+| Generated audio and images live only in the session unless the learner keeps them | Storage stays small, nothing accumulates silently |
 | A workbook is a code module with a small SDK | Free to build any exercise shape, one folder each |
 | Derived signals are computed on read | Nothing to invalidate, nothing to migrate, no caches to be wrong |
 
@@ -92,7 +92,7 @@ src/
   workbooks/           index sdk sessions context writer + word-drill/            (§7, §8)
   storage/             bundle readable files transfer install                     (§4)
   screens/             Notebooks Timeline EntryDetail Composer Reflect Extract
-                       Words Practice Settings Sandbox
+                       Words Sentences Practice Settings Sandbox
   ui/                  Shell Plate Dashes QuickAdd Capturable Speak Dock
                        WorkbookLayer format.ts hooks.ts
   styles/              tokens.css app.css
@@ -203,6 +203,7 @@ interface Media {
   width?: number
   height?: number
   durationMs?: number
+  voice?: string            // on generated speech, the voice it was spoken in (§9)
 }
 
 interface Word {
@@ -213,6 +214,7 @@ interface Word {
   meaning?: string
   note?: string
   familiarity?: Familiarity // unset means estimate it
+  audioMediaId?: Id         // the kept clip, written on first play. Renaming drops it (§9)
   createdAt: Iso
   updatedAt: Iso
 }
@@ -225,6 +227,7 @@ interface Sentence {
   translation?: string
   note?: string
   correctsId?: Id           // set on a 'corrected' sentence, points at the 'mine' one
+  audioMediaId?: Id         // as Word. Editing the text drops it (§9)
   createdAt: Iso
 }
 
@@ -468,8 +471,8 @@ what lets `/sandbox` (§8) point a workbook at a fixture.
 | Notebooks | `createNotebook`, `touchNotebook`, `deleteNotebook` |
 | Entries | `createEntry`, `saveEntry`, `todayEntry`, `entryOrdinal`, `neighbourEntries` |
 | Pruning | `pruneEntryIfEmpty`, `pruneEmptyEntries`, `deleteEntryPreview`, `deleteEntry` |
-| Words | `addWord`, `updateWord`, `setFamiliarity` |
-| Sentences | `addSentence`, `deriveWordLinks`, `unlinkWordFromSentence` |
+| Words | `addWord`, `updateWord`, `setFamiliarity`, `deleteWord` |
+| Sentences | `addSentence`, `updateSentence`, `deleteSentence`, `deriveWordLinks`, `unlinkWordFromSentence` |
 | Attachments | `addAttachment`, `deleteAttachment` |
 | Links | `encounter` |
 | Reflect | `appendReflection` |
@@ -488,6 +491,17 @@ the entry body under a `---` separator, chosen because it is a real Markdown the
 survives into `readable/` as a rule, and because it passes through that renderer's line escaper
 untouched. `acceptProposal` creates every sentence first and wires `correctsId` in a second pass, since
 a corrected sentence can point at one proposed in the same batch.
+
+`deleteWord` and `deleteSentence` were added with the sentences section (§6) and are symmetric on
+purpose. Both take the target's encounters and its `wordInSentences` links, leave the thing on the other
+side of those links alone, and then run `pruneEntryIfEmpty` on every entry they touched, so a quick-add
+that created today's entry and was then deleted leaves nothing behind. `deleteSentence` does one extra
+thing: any sentence whose `correctsId` pointed at it loses that pointer, because a dangling id would
+survive into the export bundle with nothing on the other end.
+
+The word delete lived inline in the words screen until then, which was the one place a component wrote
+to Dexie directly. Moving it here restored the rule at the top of this section, and it gained the entry
+prune the inline version never had.
 
 ### Autosave
 
@@ -533,6 +547,7 @@ above it, per the UI guide.
 | `/n/:nb/e/:id/edit` | Composer |
 | `/n/:nb/e/:id/reflect` | Reflect |
 | `/n/:nb/words` and `/n/:nb/words/:id` | Words, index and detail |
+| `/n/:nb/sentences` and `/n/:nb/sentences/:id` | Sentences, index and detail |
 | `/n/:nb/practice` | Workbooks contents page |
 | `/settings` | Settings, including the API key and export |
 | `/sandbox` | Dev only (§8). Registered in every build, redirects to `/` in production |
@@ -554,9 +569,40 @@ workbook means minimize, which is exactly the intent.
 Search is a filter over the timeline, not a screen of its own. `?q=` narrows the visible entries by
 substring over title, body, and source, and the dated hairlines collapse to only the days that still
 have an entry. Same search-param reasoning as above, so back clears it and a filtered view survives a
-reload. The words screen keeps its own separate filter over terms and meanings.
+reload. The words and sentences screens keep their own separate filters over their own text.
 
 Reflect gets a real route because the UI guide gives it the full shell.
+
+### The notebook has four sections, not three
+
+Added after M5. `Sentence` is one of the two learning units (concepts §5) and it had no home: a sentence
+was reachable only from the entry it came from, from a word that appears in it, and from a count on the
+timeline that was not a link. There was no way to see a notebook's sentences at all, and no way to find
+one without remembering the day.
+
+So Sentences is its own section beside Words rather than a tab inside a renamed one. The two lists want
+different shapes, which is the whole argument. Words sort alphabetically and carry three familiarity
+dashes and an encounter count. Sentences sort newest first, carry their origin, and have nothing useful
+to sort alphabetically by. One column serving both would have made both worse.
+
+The frame is shared and the rows are not, which is what the `ix-` CSS prefix marks: `ix-split`,
+`ix-list`, `ix-rule`, `ix-detail` and the row and detail chrome are the index-screen scaffolding, while
+`wd-` and `sn-` carry only what is specific to a word row or a sentence row. Before this there was one
+such screen and the scaffolding was named `wd-`.
+
+The rail is the same four links on all four screens, so it is one `SectionRail` component rather than a
+block copied into each screen. It was copied into three before this, and a fourth copy is how they drift.
+Words is `Type` and Sentences is `Quote`, which is the pair the composer's rail already uses for adding
+one of each.
+
+The timeline's sentence count became a link to `/n/:nb/sentences?entry=<id>`, which narrows the list to
+that entry. Same search-param-as-filter reasoning as `?q=`, so back clears it, and the section label
+says what it is scoped to with the way out of it on the same line.
+
+One cost, stated rather than fixed. On mobile the rail is a row of 44px targets with the dock chips on
+the end and no wrap or scroll. Five icons plus the hairline is 221px of the 360px bar, so three docked
+sessions fit where four did before. This was not verified in a browser: the harness viewport could not
+be driven below the 720px breakpoint.
 
 ### Where the pieces mount
 
@@ -650,12 +696,13 @@ sets a flag so the unmount cleanup does not then dock a row that has just been d
 ### Media in a session
 
 Generated audio and images are held as Blobs in React state for the life of the sheet, not in
-IndexedDB. Minimizing a session drops them, and restoring regenerates on demand. This follows from
-the storage decision in §1, and it means a docked session costs a few hundred bytes of JSON.
+IndexedDB. Minimizing a session drops that state, so a docked session costs a few hundred bytes of
+JSON. This follows from the storage decision in §1.
 
-Consequence worth knowing. A minimized listening exercise loses its audio and re-fetches when
-reopened. That is a real API call. Acceptable at personal-use volume, and the alternative is an
-ever-growing media cache with an eviction policy nobody wants to write.
+Audio survives it anyway. Clips on a word or a sentence are kept in `media` from first play, and
+everything else `speak` holds in a module-level map for the page load (§9), so reopening a minimized
+exercise replays without a second API call. Images have no such map and do re-fetch, which is fine
+while nothing in v1 draws.
 
 ### Verified, not assumed
 
@@ -962,10 +1009,26 @@ Shipping to other people means the proxy above, which is also what makes the key
 
 ### Where audio is actually used
 
-TTS is a play affordance on a word and on a sentence, generated on press and never stored, per §1.
-Pressing it again regenerates it. There is no audio capture in the composer and no voice memo, so
-`Attachment.kind: 'audio'` exists for material the learner attaches and for workbook output, not for
-recording into the journal.
+TTS is a play affordance on a word and on a sentence. Where it belongs to a record it is kept, and
+where it does not it is held for the page load.
+
+**Kept, on a word or a sentence.** The first play writes the clip to `media` and points
+`Word.audioMediaId` or `Sentence.audioMediaId` at it, so it survives a reload and goes in the bundle.
+First play rather than on add, because persisting on add would mean accepting five words out of Extract
+fires five calls nobody pressed for, and §1 holds that every AI call follows a press. The learner
+cannot tell the two apart, since the only way to notice a missing clip is to press play and pressing
+play is what creates it. Renaming a term or editing a sentence drops the clip, because it speaks the
+old wording, and `Regenerate audio` in the edit block replaces a reading that came out wrong. The
+media row carries no `Attachment`, because an attachment says raw material belongs to an entry while
+this belongs to the term. `journal/audio.ts` holds that policy and is the one module in `journal/`
+that reaches for `ai/`.
+
+**Held, for anything else.** Practice lines and reflection questions are not records, so `speak` keeps
+them in a module-level map keyed by language, voice and text, capped at 150 and dropped on reload. A
+failed call drops its key so the button still works.
+
+There is no audio capture in the composer and no voice memo, so `Attachment.kind: 'audio'` exists for
+material the learner attaches and for workbook output, not for recording into the journal.
 
 STT is an input mode inside workbooks, where typing is always available alongside it and the
 transcript lands in the text field for editing before anything is submitted. That last part carries
@@ -1146,16 +1209,16 @@ stays out of the way in a webview that does not need it.
 
 ## 13. Tests
 
-Only the pure logic, and only because these are the places where a silent bug corrupts data. 158 tests
+Only the pure logic, and only because these are the places where a silent bug corrupts data. 172 tests
 across 8 files, all of which run without a browser.
 
 | File | Tests | What it pins |
 |---|---|---|
 | `db/normalize.test.ts` | 14 | `normalizeTerm` across NFC and NFD Hangul, and word-in-sentence matching in Korean and English |
 | `journal/derive.test.ts` | 13 | The derived signal functions against fixed fixtures |
-| `journal/writes.test.ts` | 27 | The write-layer rules: today's-entry linking, one encounter per entry, cascade deletes, the settings spread that must not drop the API key |
+| `journal/writes.test.ts` | 52 | The write-layer rules: today's-entry linking, one encounter per entry, cascade deletes, the settings spread that must not drop the API key, the word and sentence edits and deletes including the `correctsId` unhook, and kept audio including the drop on a renamed term or edited sentence |
 | `journal/proposals.test.ts` | 17 | The dedupe split in Extract, known versus new, and the re-extract merge |
-| `storage/bundle.test.ts` | 37 | Zip round trip, the id remap for a new copy, slugs, deterministic filenames |
+| `storage/bundle.test.ts` | 38 | Zip round trip, the id remap for a new copy including the kept-audio pointers, slugs, deterministic filenames |
 | `storage/transfer.test.ts` | 22 | Collect and apply against a database, including Replace |
 | `workbooks/context.test.ts` | 18 | `buildContext` for each `BundleRequest` shape, and the pure selection rules |
 | `workbooks/sessions.test.ts` | 10 | Session state surviving the round trip through IndexedDB, and "at most one expanded" |
@@ -1204,7 +1267,8 @@ Each of these is a cost of a §1 decision, not an oversight.
 | Edits on two devices between exports lose one side | One device is home. Removes all sync code |
 | The API key is readable in the browser | Personal use. A proxy is the answer if that changes |
 | No live voice conversation, and no spoken input at all | Both need a server: realtime needs ephemeral tokens, and `/v1/stt` is a socket a browser cannot authenticate. TTS still works, and typing was always the fallback |
-| Reopening a docked session regenerates its audio | Cheaper than a media cache with an eviction policy |
+| Reopening a docked session regenerates its images | Nothing in v1 draws. Audio is kept on words and sentences, and held for the page load elsewhere (§9) |
+| The export bundle grows with the vocabulary once clips are kept | Bounded by the word list rather than by usage, so it is predictable. Unlike a cache it needs no eviction policy |
 | Browser can evict IndexedDB | `storage.persist()`, an export reminder, and Tauri would end it |
 | CJK word-in-sentence links over-match | Cosmetic, and removable by hand |
 | Words practised twice in a day count once | The count means days it came up, which is the useful reading |

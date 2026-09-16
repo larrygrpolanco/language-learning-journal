@@ -7,10 +7,15 @@ import {
   deleteEntry,
   deleteEntryPreview,
   deleteNotebook,
+  deleteSentence,
+  deleteWord,
   encounter,
   localDayRange,
   pruneEntryIfEmpty,
+  setItemAudio,
   todayEntry,
+  updateSentence,
+  updateWord,
 } from './writes'
 
 let db: JournalDb
@@ -195,6 +200,139 @@ describe('addSentence', () => {
   })
 })
 
+describe('updateSentence', () => {
+  it('rewrites the text and re-derives the word links', async () => {
+    const kept = await addWord({ notebookId: nb.id, term: '수고' }, db)
+    const gone = await addWord({ notebookId: nb.id, term: '그릇' }, db)
+    const s = await addSentence({ notebookId: nb.id, text: '그릇 좀 주세요.' }, db)
+    expect((await db.wordInSentences.where('sentenceId').equals(s).toArray()).length).toBe(1)
+
+    await updateSentence(s, { text: '오늘 수고하셨습니다.' }, db)
+
+    const links = await db.wordInSentences.where('sentenceId').equals(s).toArray()
+    expect(links.map((l) => l.wordId)).toEqual([kept.wordId])
+    expect(links.some((l) => l.wordId === gone.wordId)).toBe(false)
+  })
+
+  it('leaves a manual link alone when the text changes', async () => {
+    const w = await addWord({ notebookId: nb.id, term: '그릇' }, db)
+    const s = await addSentence({ notebookId: nb.id, text: '오늘' }, db)
+    await db.wordInSentences.add({
+      id: newId(),
+      notebookId: nb.id,
+      wordId: w.wordId,
+      sentenceId: s,
+      source: 'manual',
+    })
+    await updateSentence(s, { text: '내일' }, db)
+    expect(await db.wordInSentences.where('sentenceId').equals(s).count()).toBe(1)
+  })
+
+  it('clears a translation rather than storing an empty string', async () => {
+    const s = await addSentence({ notebookId: nb.id, text: '오늘', translation: 'today' }, db)
+    await updateSentence(s, { translation: '  ' }, db)
+    expect('translation' in (await db.sentences.get(s))!).toBe(false)
+  })
+
+  it('refuses to blank the text', async () => {
+    const s = await addSentence({ notebookId: nb.id, text: '오늘' }, db)
+    await updateSentence(s, { text: '   ' }, db)
+    expect((await db.sentences.get(s))?.text).toBe('오늘')
+  })
+
+  it('drops correctsId when the origin stops being a correction', async () => {
+    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
+    const fix = await addSentence(
+      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
+      db,
+    )
+    await updateSentence(fix, { origin: 'mine' }, db)
+    const after = (await db.sentences.get(fix))!
+    expect(after.origin).toBe('mine')
+    expect('correctsId' in after).toBe(false)
+  })
+
+  it('keeps correctsId when only the text is edited', async () => {
+    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
+    const fix = await addSentence(
+      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
+      db,
+    )
+    await updateSentence(fix, { text: '제가 치우겠습니다' }, db)
+    expect((await db.sentences.get(fix))?.correctsId).toBe(mine)
+  })
+})
+
+describe('deleteSentence', () => {
+  it('takes its encounters and word links with it', async () => {
+    await addWord({ notebookId: nb.id, term: '수고' }, db)
+    const s = await addSentence({ notebookId: nb.id, text: '오늘 수고하셨습니다.' }, db)
+    await deleteSentence(s, db)
+    expect(await db.sentences.get(s)).toBeUndefined()
+    expect(await db.encounters.where('targetId').equals(s).count()).toBe(0)
+    expect(await db.wordInSentences.where('sentenceId').equals(s).count()).toBe(0)
+  })
+
+  it('leaves the words it mentioned alone', async () => {
+    const w = await addWord({ notebookId: nb.id, term: '수고' }, db)
+    const s = await addSentence({ notebookId: nb.id, text: '오늘 수고하셨습니다.' }, db)
+    await deleteSentence(s, db)
+    expect(await db.words.get(w.wordId)).toBeDefined()
+  })
+
+  it('prunes an entry it was the only thing in', async () => {
+    const s = await addSentence({ notebookId: nb.id, text: '오늘' }, db)
+    expect(await db.entries.count()).toBe(1)
+    await deleteSentence(s, db)
+    expect(await db.entries.count()).toBe(0)
+  })
+
+  it('keeps an entry that still has a body', async () => {
+    const e = await todayEntry(nb.id, db)
+    await db.entries.update(e.id, { body: 'a real entry' })
+    const s = await addSentence({ notebookId: nb.id, text: '오늘', entryId: e.id }, db)
+    await deleteSentence(s, db)
+    expect(await db.entries.get(e.id)).toBeDefined()
+  })
+
+  it('unhooks a correction that pointed at it, rather than leaving a dangling id', async () => {
+    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
+    const fix = await addSentence(
+      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
+      db,
+    )
+    await deleteSentence(mine, db)
+    const after = (await db.sentences.get(fix))!
+    expect(after.origin).toBe('corrected')
+    expect('correctsId' in after).toBe(false)
+  })
+})
+
+describe('deleteWord', () => {
+  it('takes its encounters and sentence links with it', async () => {
+    const w = await addWord({ notebookId: nb.id, term: '수고' }, db)
+    await addSentence({ notebookId: nb.id, text: '오늘 수고하셨습니다.' }, db)
+    await deleteWord(w.wordId, db)
+    expect(await db.words.get(w.wordId)).toBeUndefined()
+    expect(await db.encounters.where('targetId').equals(w.wordId).count()).toBe(0)
+    expect(await db.wordInSentences.where('wordId').equals(w.wordId).count()).toBe(0)
+  })
+
+  it('leaves the sentences it appeared in alone', async () => {
+    const w = await addWord({ notebookId: nb.id, term: '수고' }, db)
+    const s = await addSentence({ notebookId: nb.id, text: '오늘 수고하셨습니다.' }, db)
+    await deleteWord(w.wordId, db)
+    expect(await db.sentences.get(s)).toBeDefined()
+  })
+
+  it('prunes an entry it was the only thing in', async () => {
+    const w = await addWord({ notebookId: nb.id, term: '수고' }, db)
+    expect(await db.entries.count()).toBe(1)
+    await deleteWord(w.wordId, db)
+    expect(await db.entries.count()).toBe(0)
+  })
+})
+
 describe('pruneEntryIfEmpty', () => {
   it('deletes an entry with nothing in it', async () => {
     const e = await todayEntry(nb.id, db)
@@ -326,5 +464,115 @@ describe('deleteNotebook', () => {
     // The other notebook is untouched. The notebook is the boundary.
     expect(await db.words.count()).toBe(1)
     expect(await db.entries.where('notebookId').equals(other.id).count()).toBe(1)
+  })
+})
+
+describe('kept audio', () => {
+  const clip = (tag = 'mp3') => new Blob([tag], { type: 'audio/mpeg' })
+
+  const wordWithClip = async (term = '그릇') => {
+    const { wordId } = await addWord({ notebookId: nb.id, term }, db)
+    await setItemAudio({ type: 'word', id: wordId }, clip(), 'eve', db)
+    return wordId
+  }
+
+  const sentenceWithClip = async (text = '그릇을 치웠어요.') => {
+    const sentenceId = await addSentence({ notebookId: nb.id, text }, db)
+    await setItemAudio({ type: 'sentence', id: sentenceId }, clip(), 'eve', db)
+    return sentenceId
+  }
+
+  it('links the clip to the word and records the voice it was spoken in', async () => {
+    const wordId = await wordWithClip()
+
+    const word = await db.words.get(wordId)
+    expect(word?.audioMediaId).toBeDefined()
+
+    const media = await db.media.get(word!.audioMediaId!)
+    expect(media?.voice).toBe('eve')
+    expect(media?.mime).toBe('audio/mpeg')
+    // Scoped to the notebook, which is what makes the cascade and the export walk find it.
+    expect(media?.notebookId).toBe(nb.id)
+  })
+
+  it('carries no attachment, because the clip belongs to the term and not to an entry', async () => {
+    await wordWithClip()
+    expect(await db.attachments.count()).toBe(0)
+  })
+
+  it('replacing drops the clip it supersedes rather than leaving it orphaned', async () => {
+    const wordId = await wordWithClip()
+    const first = (await db.words.get(wordId))!.audioMediaId
+
+    await setItemAudio({ type: 'word', id: wordId }, clip('again'), 'eve', db)
+    const second = (await db.words.get(wordId))!.audioMediaId
+
+    expect(second).not.toBe(first)
+    expect(await db.media.get(first!)).toBeUndefined()
+    expect(await db.media.count()).toBe(1)
+  })
+
+  it('renaming a term drops its clip, which spoke the old one', async () => {
+    const wordId = await wordWithClip('그릇')
+    await updateWord(wordId, { term: '접시' }, db)
+
+    expect((await db.words.get(wordId))?.audioMediaId).toBeUndefined()
+    expect(await db.media.count()).toBe(0)
+  })
+
+  it('a change of case alone still drops it, since the clip is of what is written', async () => {
+    const { wordId } = await addWord({ notebookId: nb.id, term: 'seoul' }, db)
+    await setItemAudio({ type: 'word', id: wordId }, clip(), 'eve', db)
+
+    await updateWord(wordId, { term: 'Seoul' }, db)
+
+    // termKey is unchanged here, so comparing on that would have kept a clip saying the old thing.
+    expect((await db.words.get(wordId))?.audioMediaId).toBeUndefined()
+    expect(await db.media.count()).toBe(0)
+  })
+
+  it('editing a meaning leaves the clip alone, because the term still sounds the same', async () => {
+    const wordId = await wordWithClip()
+    await updateWord(wordId, { meaning: 'a bowl' }, db)
+
+    expect((await db.words.get(wordId))?.audioMediaId).toBeDefined()
+    expect(await db.media.count()).toBe(1)
+  })
+
+  it('editing a sentence drops its clip', async () => {
+    const sentenceId = await sentenceWithClip()
+    await updateSentence(sentenceId, { text: '그릇을 치웠습니다.' }, db)
+
+    expect((await db.sentences.get(sentenceId))?.audioMediaId).toBeUndefined()
+    expect(await db.media.count()).toBe(0)
+  })
+
+  it('changing only a sentence origin leaves the clip alone', async () => {
+    const sentenceId = await sentenceWithClip()
+    await updateSentence(sentenceId, { origin: 'mine' }, db)
+
+    expect((await db.sentences.get(sentenceId))?.audioMediaId).toBeDefined()
+    expect(await db.media.count()).toBe(1)
+  })
+
+  it('deleting a word takes its clip', async () => {
+    await wordWithClip()
+    await deleteWord((await db.words.toCollection().first())!.id, db)
+    expect(await db.media.count()).toBe(0)
+  })
+
+  it('deleting a sentence takes its clip', async () => {
+    const sentenceId = await sentenceWithClip()
+    await deleteSentence(sentenceId, db)
+    expect(await db.media.count()).toBe(0)
+  })
+
+  it('deleting the notebook takes every clip, which import-Replace depends on', async () => {
+    await wordWithClip()
+    await sentenceWithClip()
+    expect(await db.media.count()).toBe(2)
+
+    await deleteNotebook(nb.id, db)
+    expect(await db.media.count()).toBe(0)
   })
 })

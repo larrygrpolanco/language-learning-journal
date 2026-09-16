@@ -71,13 +71,17 @@ const fixture = (): NotebookBundle => {
         createdAt: iso,
       },
     ],
-    media: [{ id: 'm1', notebookId: 'nb1', mime: 'image/png', width: 4, height: 2, file: 'media/m1.png' }],
+    media: [
+      { id: 'm1', notebookId: 'nb1', mime: 'image/png', width: 4, height: 2, file: 'media/m1.png' },
+      { id: 'm2', notebookId: 'nb1', mime: 'audio/mpeg', voice: 'eve', file: 'media/m2.mp3' },
+      { id: 'm3', notebookId: 'nb1', mime: 'audio/mpeg', voice: 'eve', file: 'media/m3.mp3' },
+    ],
     words: [
-      { id: 'w1', notebookId: 'nb1', term: '수고하셨습니다', termKey: '수고하셨습니다', meaning: 'thanks for your effort', createdAt: iso, updatedAt: iso },
+      { id: 'w1', notebookId: 'nb1', term: '수고하셨습니다', termKey: '수고하셨습니다', meaning: 'thanks for your effort', audioMediaId: 'm2', createdAt: iso, updatedAt: iso },
       { id: 'w2', notebookId: 'nb1', term: '밑반찬', termKey: '밑반찬', familiarity: 'got it', createdAt: iso, updatedAt: iso },
     ],
     sentences: [
-      { id: 's1', notebookId: 'nb1', text: '오늘 수고하셨습니다.', origin: 'encountered', translation: 'you worked hard today', createdAt: iso },
+      { id: 's1', notebookId: 'nb1', text: '오늘 수고하셨습니다.', origin: 'encountered', translation: 'you worked hard today', audioMediaId: 'm3', createdAt: iso },
       { id: 's2', notebookId: 'nb1', text: '저는 매운 거 잘 먹어요', origin: 'mine', createdAt: iso },
       { id: 's3', notebookId: 'nb1', text: '저는 매운 것을 잘 먹어요', origin: 'corrected', correctsId: 's2', createdAt: iso },
     ],
@@ -94,7 +98,11 @@ const fixture = (): NotebookBundle => {
   }
 
   // Four PNG-ish bytes. Content is what matters, not validity.
-  const blobs = new Map([['m1', new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })]])
+  const blobs = new Map([
+    ['m1', new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' })],
+    ['m2', new Blob(['kept clip of the word'], { type: 'audio/mpeg' })],
+    ['m3', new Blob(['kept clip of the sentence'], { type: 'audio/mpeg' })],
+  ])
   return { data, blobs }
 }
 
@@ -349,6 +357,24 @@ describe('withFreshIds', () => {
     }
     for (const p of data.practiceEvents) expect(known.has(p.targetId)).toBe(true)
     for (const s of data.sentences) if (s.correctsId) expect(known.has(s.correctsId)).toBe(true)
+    for (const w of data.words) if (w.audioMediaId) expect(known.has(w.audioMediaId)).toBe(true)
+    for (const s of data.sentences) if (s.audioMediaId) expect(known.has(s.audioMediaId)).toBe(true)
+  })
+
+  it('keeps a kept clip pointing at the copy media, not the original', () => {
+    const original = fixture()
+    const copy = withFreshIds(original, freshIds())
+
+    const word = copy.data.words.find((w) => w.audioMediaId !== undefined)!
+    const sentence = copy.data.sentences.find((s) => s.audioMediaId !== undefined)!
+
+    // The tell for the bug this guards: an un-remapped pointer still reads 'm2' and would resolve in
+    // the original notebook, so the copy would play the right audio off the wrong record.
+    expect(word.audioMediaId).not.toBe('m2')
+    expect(sentence.audioMediaId).not.toBe('m3')
+
+    expect(copy.blobs.get(word.audioMediaId!)).toBe(original.blobs.get('m2'))
+    expect(copy.blobs.get(sentence.audioMediaId!)).toBe(original.blobs.get('m3'))
   })
 })
 

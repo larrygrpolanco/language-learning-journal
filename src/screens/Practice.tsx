@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, Library, NotebookTabs, Type } from 'lucide-react'
 import { db } from '../db/db'
 import { WORKBOOKS } from '../workbooks'
 import { buildContext } from '../workbooks/context'
 import { openSession } from '../workbooks/sessions'
-import { RailLink, Shell } from '../ui/Shell'
+import { LibraryBack, SectionRail, Shell } from '../ui/Shell'
 import { useNotebook } from '../ui/hooks'
 import { relativeDay } from '../ui/format'
 import type { ContextBundle } from '../workbooks/sdk'
@@ -57,24 +56,8 @@ export const Practice = () => {
           <span className="text-muted pr-last">last practiced {relativeDay(lastPracticed)}</span>
         ) : null
       }
-      back={
-        <RailLink to="/" label="Back to the library">
-          <Library size={17} />
-        </RailLink>
-      }
-      rail={
-        <>
-          <RailLink to={`/n/${nb}`} label="Journal">
-            <BookOpen size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/words`} label="Words" end={false}>
-            <Type size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/practice`} label="Practice">
-            <NotebookTabs size={17} />
-          </RailLink>
-        </>
-      }
+      back={<LibraryBack />}
+      rail={<SectionRail nb={nb} />}
     >
       <div className="pr-list">
         {WORKBOOKS.map((w, i) => (

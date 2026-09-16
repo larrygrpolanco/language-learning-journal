@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { BookOpen, ChevronLeft, Library, NotebookTabs, Quote, Type } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { Dock } from './Dock'
+import type { Id } from '../db/types'
 
 /**
  * The persistent chrome. Technical plan §6, UI guide "Shell".
@@ -115,4 +116,41 @@ export const RailButton = ({
 /** An 11.5px uppercase section label. Used above every block on the detail screens. */
 export const SectionLabel = ({ children }: { children: ReactNode }) => (
   <div className="section-label">{children}</div>
+)
+
+/**
+ * The head of the rail on the notebook's four sections. One step up is the library.
+ *
+ * His reasoning, kept because it is the rule for the whole rail: the book icon from the library
+ * screen, at the top of the journal screen, putting you back. The icon that got you in gets you out.
+ */
+export const LibraryBack = () => (
+  <RailLink to="/" label="Back to the library">
+    <Library size={17} />
+  </RailLink>
+)
+
+/**
+ * Where you are inside the notebook. One component, so the four sections cannot drift apart.
+ *
+ * Words is `Type` and Sentences is `Quote`, the same pair the composer's rail already uses for adding
+ * one of each. Reusing the glyph that already means the thing is what keeps the vocabulary small.
+ *
+ * `end={false}` on the two split screens so a selected word or sentence keeps its section lit.
+ */
+export const SectionRail = ({ nb }: { nb: Id }) => (
+  <>
+    <RailLink to={`/n/${nb}`} label="Journal">
+      <BookOpen size={17} />
+    </RailLink>
+    <RailLink to={`/n/${nb}/words`} label="Words" end={false}>
+      <Type size={17} />
+    </RailLink>
+    <RailLink to={`/n/${nb}/sentences`} label="Sentences" end={false}>
+      <Quote size={17} />
+    </RailLink>
+    <RailLink to={`/n/${nb}/practice`} label="Practice">
+      <NotebookTabs size={17} />
+    </RailLink>
+  </>
 )

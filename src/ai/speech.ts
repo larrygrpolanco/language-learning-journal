@@ -22,28 +22,67 @@ export const DEFAULT_VOICE = 'eve'
 export interface SpeakOptions {
   /** A `voice_id` from `GET /v1/tts/voices`. An unknown one is a 404, not a fallback. */
   voice?: string
+  /**
+   * Ignores the held clip and generates again. What Regenerate presses.
+   *
+   * Needed because the text and voice are unchanged in that case, so the key would hit and hand back
+   * the very reading the learner is asking to replace.
+   */
+  fresh?: boolean
 }
 
 /**
- * Speaks one line. Generated on press, held in React state, never stored (§1).
+ * Clips already generated this page load, keyed by exactly what determines the audio.
+ *
+ * Memory only, so §1 still holds: nothing is written, storage stays flat and the export bundle never
+ * sees a clip. A reload empties it. What it removes is paying the round trip again for a word the
+ * learner just played, which on the words and sentences screens is the normal way to use the button.
+ *
+ * Promises rather than blobs, so two rows carrying the same line share one request instead of racing.
+ */
+const cache = new Map<string, Promise<Blob>>()
+
+/** Enough for a long session on one screen. Bounded so a session cannot grow it without limit. */
+const LIMIT = 150
+
+/**
+ * Speaks one line, reusing the clip if it has already been generated (§9).
  *
  * `language` is the notebook's own `language` field, which is free text. xAI accepts a BCP-47 subtag,
  * so this passes the leading token lowercased: 'ko-KR' and 'Korean' both need to become something the
  * API recognises, and 'ko' is what it wants.
  */
-export const speak = async (
-  text: string,
-  language: string,
-  opts: SpeakOptions = {},
-): Promise<Blob> => {
+export const speak = (text: string, language: string, opts: SpeakOptions = {}): Promise<Blob> => {
   const line = text.trim()
-  if (line === '') throw new AiError('unreadable', 'Nothing to speak.')
+  if (line === '') return Promise.reject(new AiError('unreadable', 'Nothing to speak.'))
 
-  const res = await post('/tts', {
-    text: line,
-    language: languageTag(language),
-    voice: opts.voice ?? DEFAULT_VOICE,
-  })
+  const tag = languageTag(language)
+  const voice = opts.voice ?? DEFAULT_VOICE
+  // NUL joins the parts because none of them can contain it, so no combination of values can collide.
+  // Voice is in the key so adding a voice control later cannot serve audio in the previous one.
+  const key = `${tag}\u0000${voice}\u0000${line}`
+
+  const hit = opts.fresh ? undefined : cache.get(key)
+  if (hit) return hit
+
+  const pending = generate(line, tag, voice)
+  cache.set(key, pending)
+  // A refusal or a dropped connection must not become this line's permanent answer. Dropping the key
+  // leaves the button working, which is what §9 promises on failure.
+  pending.catch(() => cache.delete(key))
+
+  if (cache.size > LIMIT) {
+    // Map iterates in insertion order, so this drops the oldest. Not true LRU, and it does not need to
+    // be: the cap exists to bound memory, not to predict what gets pressed next.
+    const oldest = cache.keys().next()
+    if (!oldest.done) cache.delete(oldest.value)
+  }
+
+  return pending
+}
+
+const generate = async (line: string, tag: string, voice: string): Promise<Blob> => {
+  const res = await post('/tts', { text: line, language: tag, voice })
 
   const bytes = new Uint8Array(await res.arrayBuffer())
   if (bytes.byteLength === 0) throw new AiError('unreadable', 'xAI returned no audio.')

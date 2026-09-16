@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, Library, NotebookTabs, Type } from 'lucide-react'
 import { db } from '../db/db'
 import { createEntry, pruneEmptyEntries } from '../journal/writes'
-import { RailLink, Shell } from '../ui/Shell'
+import { LibraryBack, SectionRail, Shell } from '../ui/Shell'
 import { Plate } from '../ui/Plate'
 import { useMedia, useNotebook } from '../ui/hooks'
 import { plural, shortDate } from '../ui/format'
@@ -111,6 +110,9 @@ export const Timeline = () => {
           <Link to={`/n/${nb}/words`} className="btn btn-ghost">
             Words
           </Link>
+          <Link to={`/n/${nb}/sentences`} className="btn btn-ghost">
+            Sentences
+          </Link>
           {/* Unhidden with the workbook layer. In M1 this led to an empty contents page, so it was
               not shown at all rather than shown and disappointing. */}
           <Link to={`/n/${nb}/practice`} className="btn btn-ghost">
@@ -121,24 +123,8 @@ export const Timeline = () => {
           </button>
         </>
       }
-      back={
-        <RailLink to="/" label="Back to the library">
-          <Library size={17} />
-        </RailLink>
-      }
-      rail={
-        <>
-          <RailLink to={`/n/${nb}`} label="Journal">
-            <BookOpen size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/words`} label="Words" end={false}>
-            <Type size={17} />
-          </RailLink>
-          <RailLink to={`/n/${nb}/practice`} label="Practice">
-            <NotebookTabs size={17} />
-          </RailLink>
-        </>
-      }
+      back={<LibraryBack />}
+      rail={<SectionRail nb={nb} />}
     >
       {rows === undefined ? null : rows.length === 0 ? (
         <p className="empty">Nothing written yet. An entry is one moment of learning.</p>
@@ -208,7 +194,10 @@ const TimelineEntry = ({
             </Link>
           ))}
           {row.sentences > 0 ? (
-            <span className="tag tag-neutral">{plural(row.sentences, 'sentence')}</span>
+            // Scoped to this entry, so the count leads to the sentences it is counting.
+            <Link to={`/n/${nb}/sentences?entry=${row.entry.id}`} className="tag tag-neutral">
+              {plural(row.sentences, 'sentence')}
+            </Link>
           ) : null}
         </div>
       )}

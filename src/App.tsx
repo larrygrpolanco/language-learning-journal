@@ -5,6 +5,7 @@ import { EntryDetail } from './screens/EntryDetail'
 import { Composer } from './screens/Composer'
 import { Reflect } from './screens/Reflect'
 import { Words } from './screens/Words'
+import { Sentences } from './screens/Sentences'
 import { Practice } from './screens/Practice'
 import { Settings } from './screens/Settings'
 import { Sandbox } from './screens/Sandbox'
@@ -34,6 +35,8 @@ export const App = () => (
       <Route path="/n/:nb/e/:id/reflect" element={<Reflect />} />
       <Route path="/n/:nb/words" element={<Words />} />
       <Route path="/n/:nb/words/:id" element={<Words />} />
+      <Route path="/n/:nb/sentences" element={<Sentences />} />
+      <Route path="/n/:nb/sentences/:id" element={<Sentences />} />
       <Route path="/n/:nb/practice" element={<Practice />} />
       <Route path="/settings" element={<Settings />} />
       {/* Dev only. `Sandbox` is a redirect to the library in a production build. */}

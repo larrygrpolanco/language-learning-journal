@@ -194,6 +194,10 @@ textarea.ruled {
   font-size: 13px;
   color: var(--color-neutral-700);
 }
+/* A sentence that opens its own detail keeps reading as a sentence rather than as a link. The
+   rule already draws the eye, so an underline on top of it is noise. */
+a.sentence { color: inherit; text-decoration: none; display: block; }
+a.sentence:hover { border-left-color: var(--color-accent-700); }
 
 /* ── Borderless inputs, for the composer and the timeline filter ───────────── */
 
@@ -372,6 +376,7 @@ textarea.ruled {
 }
 .tl-tags .tag { text-decoration: none; font-family: var(--font-target); }
 .tl-tags a.tag-outline:hover { background: var(--color-accent-100); }
+.tl-tags a.tag-neutral:hover { color: var(--color-accent-700); }
 
 /* ── Entry detail ───────────────────────────────────────────────────────────── */
 
@@ -519,23 +524,26 @@ textarea.ruled {
 .cp-remove:hover { color: var(--color-accent); border-color: var(--color-accent); }
 .cp-attach { font-size: 12.5px; }
 
-/* ── Words ──────────────────────────────────────────────────────────────────── */
+/* ── Index screens: words and sentences ──────────────────────────────────────
+   Both are an index column left and a detail pane right, split by a 1px rule. The
+   `ix-` rules are that shared scaffolding. `wd-` and `sn-` further down carry only
+   what is specific to a word row or a sentence row. */
 
-.wd-split {
+.ix-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px 300px;
   gap: 0;
   margin: calc(-1 * var(--space-8)) -37px;
   min-height: calc(100vh - 57px);
 }
-.wd-list { padding: var(--space-4) var(--space-6) var(--space-6) 37px; }
-.wd-rule { background: var(--color-divider); }
-.wd-detail {
+.ix-list { padding: var(--space-4) var(--space-6) var(--space-6) 37px; }
+.ix-rule { background: var(--color-divider); }
+.ix-detail {
   padding: var(--space-4) 37px var(--space-6) var(--space-6);
   background: var(--color-neutral-100);
 }
 
-.wd-row {
+.ix-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -545,33 +553,33 @@ textarea.ruled {
   color: inherit;
   text-decoration: none;
 }
-.wd-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
-.wd-row-on { background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+.ix-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+.ix-row-on { background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
 
-.wd-row-text { min-width: 0; }
+.ix-row-text { min-width: 0; }
 .wd-term {
   display: block;
   font-size: 16px;
   font-family: var(--font-target);
 }
-.wd-meaning {
+.ix-row-sub {
   display: block;
   font-size: 12.5px;
   color: var(--color-neutral-700);
 }
-.wd-row-meta {
+.ix-row-meta {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex: none;
 }
-.wd-count {
+.ix-count {
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   color: var(--color-neutral-700);
 }
 
-.wd-detail-term {
+.ix-detail-term {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
   font-size: 26px;
@@ -579,7 +587,7 @@ textarea.ruled {
 }
 
 /* The speaker sits beside the term, not under it. UI guide §7. */
-.wd-detail-head {
+.ix-detail-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -587,14 +595,14 @@ textarea.ruled {
 }
 
 /* And at 28px on each sentence row, hanging off the right of the gold rule. */
-.wd-sentence-row {
+.sentence-row {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
 }
-.wd-sentence-row > .sentence { flex: 1; min-width: 0; }
-.wd-detail-meaning { font-size: 13px; margin-bottom: var(--space-4); }
-.wd-fam { margin-bottom: var(--space-2); }
+.sentence-row > .sentence { flex: 1; min-width: 0; }
+.ix-detail-sub { font-size: 13px; margin-bottom: var(--space-4); }
+.ix-seg { margin-bottom: var(--space-2); }
 .wd-estimate {
   font-size: 12px;
   font-style: italic;
@@ -603,8 +611,8 @@ textarea.ruled {
 }
 .wd-unset { font-size: 12px; padding-left: 0; }
 
-.wd-met { font-size: 13px; line-height: 1.7; }
-.wd-met-row {
+.ix-met { font-size: 13px; line-height: 1.7; }
+.ix-met-row {
   display: block;
   padding-bottom: 4px;
   margin-bottom: 4px;
@@ -612,10 +620,10 @@ textarea.ruled {
   color: inherit;
   text-decoration: none;
 }
-.wd-met-row:hover { color: var(--color-accent-700); }
-.wd-met-row:last-child { border-bottom: 0; }
+.ix-met-row:hover { color: var(--color-accent-700); }
+.ix-met-row:last-child { border-bottom: 0; }
 
-.wd-sentences {
+.sentence-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -623,19 +631,81 @@ textarea.ruled {
   line-height: 1.7;
 }
 
-.wd-edit-actions {
+.ix-edit-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
-.wd-delete {
+.ix-delete {
   font-size: 12px;
   padding-left: 0;
   margin-top: var(--space-6);
   color: var(--color-neutral-700);
 }
-.wd-delete:hover { color: var(--color-accent); }
+.ix-delete:hover { color: var(--color-accent); }
+
+/* Sits above Delete as the other immediate action in an edit block, so the pair reads together
+   and apart from Cancel and Save, which only act when the form is submitted. */
+.ix-regen {
+  font-size: 12px;
+  padding-left: 0;
+  margin-top: var(--space-6);
+  color: var(--color-neutral-700);
+}
+.ix-regen:hover { color: var(--color-accent); }
+.ix-regen + .ix-delete { margin-top: var(--space-2); }
+
+/* ── Sentence rows ──────────────────────────────────────────────────────────
+   A sentence is long where a word is short, so the row leads with two lines of it
+   and states where it came from on the right. The 2px origin rule is saved for the
+   detail pane, where there is one sentence rather than forty. */
+
+.sn-row { align-items: flex-start; }
+.sn-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14.5px;
+  line-height: 1.5;
+  font-family: var(--font-target);
+}
+.sn-origin {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  flex: none;
+}
+/* Only a correction earns colour, because it is the only origin that says something happened. */
+.sn-origin-corrected { color: var(--color-accent-700); }
+
+.sn-detail-text {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+}
+.sn-note {
+  font-size: 13px;
+  color: var(--color-neutral-700);
+  margin: 0 0 var(--space-4);
+}
+.sn-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sn-words .tag { text-decoration: none; font-family: var(--font-target); }
+.sn-words .tag:hover { background: var(--color-accent-100); }
+/* Says what the filter is narrowed to, with the way out of it on the same line. */
+.sn-scope {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sn-scope-clear { font-size: 11.5px; padding: 0; }
 
 /* The re-encounter line in quick add, when the term was already in the notebook. */
 .qa-note {
@@ -1268,15 +1338,15 @@ textarea.rf-input { min-height: 64px; }
 
   .nb-grid { grid-template-columns: minmax(0, 1fr); }
 
-  /* The words split collapses to the index. Picking a word goes to its own view. */
-  .wd-split {
+  /* The index split collapses to the index. Picking a row goes to its own view. */
+  .ix-split {
     grid-template-columns: minmax(0, 1fr);
     margin: calc(-1 * var(--space-4)) -18px;
     min-height: 0;
   }
-  .wd-list { padding: var(--space-4) 18px; }
-  .wd-rule { display: none; }
-  .wd-detail { padding: var(--space-4) 18px var(--space-6); }
+  .ix-list { padding: var(--space-4) 18px; }
+  .ix-rule { display: none; }
+  .ix-detail { padding: var(--space-4) 18px var(--space-6); }
 
   .ed-footer { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); }
   .ed-numeral { font-size: 34px; }

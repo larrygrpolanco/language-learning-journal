@@ -110,7 +110,7 @@ export interface JournalWriter {
 export interface AI {
   complete: (input: string | Message[], opts?: CompleteOptions) => Promise<string>
   completeJson: <T>(input: string | Message[], opts: JsonOptions<T>) => Promise<T>
-  /** Speaks a line in the notebook's language. Held in state, never stored (§1). */
+  /** Speaks a line in the notebook's language. Reused within the page load, never stored (§1). */
   speak: (text: string) => Promise<Blob>
   draw: (prompt: string) => Promise<Blob>
   /** Defined, and the one route in `ai/` that has not been verified against the live API. */

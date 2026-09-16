@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Volume2 } from 'lucide-react'
 import { speak } from '../ai/speech'
+import { audioFor } from '../journal/audio'
 import { failureLine } from '../ai/client'
+import type { AudioTarget } from '../journal/writes'
 
 /**
  * The play affordance on a word and on a sentence. UI guide §7, technical plan §9.
  *
- * Generated on press and never stored, per §1, so pressing it again regenerates it. It reads as a
- * player rather than an assistant, which is what keeps the no-AI-affordances rule intact.
+ * It reads as a player rather than an assistant, which is what keeps the no-AI-affordances rule intact.
+ *
+ * With an `owner` the clip is kept against that word or sentence on first play, so it survives a reload
+ * and goes in the export bundle. Without one it is generated and held for the page load only, which is
+ * what practice lines and reflection questions want, since they are not records.
  *
  * There is no local fallback and that is deliberate rather than lazy. `speechSynthesis` on the machine
  * this was built for carries three voices, all `en-US`. Falling back to it for Korean would either say
@@ -18,12 +23,15 @@ export const Speak = ({
   language,
   size = 36,
   title = 'Speak this',
+  owner,
 }: {
   text: string
   language: string
   /** 36 beside a term, 28 on a sentence row, per the UI guide. */
   size?: number
   title?: string
+  /** The word or sentence this line is. Omit for text the journal does not hold. */
+  owner?: AudioTarget
 }) => {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
@@ -44,7 +52,7 @@ export const Speak = ({
     setBusy(true)
     setError(undefined)
     try {
-      const blob = await speak(text, language)
+      const blob = owner ? await audioFor(owner, text, language) : await speak(text, language)
       if (urlRef.current) URL.revokeObjectURL(urlRef.current)
       urlRef.current = URL.createObjectURL(blob)
       audioRef.current?.pause()
