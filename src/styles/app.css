@@ -1216,6 +1216,101 @@ textarea.rf-input { min-height: 64px; }
 /* A secondary action that is available and not being pushed. Smaller than the primary beside it. */
 .pick-quiet { font-size: 13px; }
 
+/* ── Text-message roleplay ──────────────────────────────────────────────────
+   The one screen in the app that is a chat, and it earns it: here the medium is
+   the exercise. Told apart by position rather than by a label on every line, so
+   the thread reads as a thread. Still hairlines and ground, no coloured bubbles
+   and no shadows, because this is a page in a notebook and not an app. */
+
+.rp { display: flex; flex-direction: column; }
+
+/* Choosing who to write to. A stack of cards, most plausible first, each its own press. */
+.rp-person {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-divider);
+  padding: var(--space-3) 0;
+}
+.rp-person:last-of-type { border-bottom: 1px solid var(--color-divider); }
+.rp-person:hover { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+
+.rp-person-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.rp-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 19px;
+}
+.rp-who { font-size: 12.5px; }
+.rp-tag { font-size: 10px; }
+.rp-situation { font-size: 13.5px; color: var(--color-neutral-800); }
+
+/* What you are trying to get out of it. Gold italic, the same voice Reflect asks its questions in,
+   because both are the app addressing the learner rather than material to be read. */
+.rp-task {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--color-accent-700);
+}
+
+.rp-brief {
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+.rp-done {
+  font-size: 11.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.rp-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rp-turn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: 80%;
+}
+.rp-hers { align-self: flex-start; }
+/* Reversed, so the speaker sits on the outside edge of the line on both sides. */
+.rp-mine { align-self: flex-end; flex-direction: row-reverse; }
+
+.rp-line {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-family: var(--font-target);
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+/* Hers carries the gold edge, as the sheet and the dock chip do. Yours is the bare page. */
+.rp-hers .rp-line {
+  background: var(--color-neutral-100);
+  border-left: 2px solid var(--color-accent);
+}
+
+textarea.rp-input { min-height: 44px; margin-top: var(--space-4); }
+
 /* ── Extract ────────────────────────────────────────────────────────────────
    A dialog over the entry, which stays visible behind it. Row anatomy comes
    from the mock: tick, index, term, right-aligned note on one hairline row. */

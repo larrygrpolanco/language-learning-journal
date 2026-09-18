@@ -1,3 +1,4 @@
+import { termAppearsIn } from '../db/normalize'
 import type { BundledSentence, BundledWord, ContextBundle } from './sdk'
 
 /**
@@ -79,4 +80,21 @@ const block = (
     )
   }
   return lines.join('\n')
+}
+
+/**
+ * Which of the notebook's words appear in something the learner wrote.
+ *
+ * Reuses `termAppearsIn`, which is what derives the Word to Sentence links, so a word counts as used
+ * here on exactly the same terms it counts as appearing in a sentence. That brings NFC normalisation
+ * with it, which matters because macOS hands over decomposed Hangul and an unnormalised comparison
+ * would silently find nothing.
+ *
+ * What this is for is evidence. A word the learner actually typed while getting something done is the
+ * strongest signal a journal can honestly collect, and it is theirs rather than a model's opinion of
+ * what they know.
+ */
+export const wordsUsedIn = (bundle: ContextBundle, text: string): BundledWord[] => {
+  const language = bundle.profile?.language ?? ''
+  return bundle.words.filter((w) => termAppearsIn(w.word.term, text, language))
 }
