@@ -278,7 +278,7 @@ const KeySection = ({ current }: { current: string | undefined }) => {
             setValue(e.target.value)
             setSaved(false)
           }}
-          placeholder="xai-…"
+          placeholder="Paste your key"
           aria-label="xAI API key"
           autoComplete="off"
           spellCheck={false}
@@ -383,7 +383,7 @@ const MeaningLanguageSection = ({ current }: { current: string | undefined }) =>
             setValue(e.target.value)
             setSaved(false)
           }}
-          placeholder="English"
+          placeholder="Defaults to English"
           aria-label="Meaning language"
         />
         <button className="btn btn-primary" onClick={() => void save()}>

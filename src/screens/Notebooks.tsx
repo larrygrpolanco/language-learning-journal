@@ -115,7 +115,7 @@ const NewNotebook = ({ onClose }: { onClose: () => void }) => {
             className="input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="시댁 한국어"
+            placeholder="What to call it"
             autoFocus
           />
         </div>
@@ -127,7 +127,7 @@ const NewNotebook = ({ onClose }: { onClose: () => void }) => {
             className="input"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            placeholder="Korean"
+            placeholder="The one you are learning"
           />
         </div>
 
@@ -138,7 +138,7 @@ const NewNotebook = ({ onClose }: { onClose: () => void }) => {
             className="input"
             value={focus}
             onChange={(e) => setFocus(e.target.value)}
-            placeholder="Talking with my wife's parents. Polite forms, family, food, small talk."
+            placeholder="What it is for"
           />
         </div>
 
@@ -149,7 +149,7 @@ const NewNotebook = ({ onClose }: { onClose: () => void }) => {
             className="input"
             value={meaningLanguage}
             onChange={(e) => setMeaningLanguage(e.target.value)}
-            placeholder="English"
+            placeholder="Defaults to English"
           />
         </div>
 
