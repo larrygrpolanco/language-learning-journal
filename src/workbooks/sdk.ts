@@ -8,6 +8,7 @@ import type {
   ProposalDraft,
   Sentence,
   Word,
+  WorkbookScope,
 } from '../db/types'
 import type { WordSignals } from '../journal/derive'
 import type { CompleteOptions, JsonOptions, Message } from '../ai/text'
@@ -36,10 +37,23 @@ export interface BundleRequest {
   entries?: { limit?: number; includeBody?: boolean }
 }
 
-/** A word with its derived signals already attached, so a workbook never computes them. */
+/**
+ * A word with its derived signals already attached, so a workbook never computes them.
+ *
+ * `focus` says the learner picked this one out. A workbook that ignores it still works, because focus
+ * has already decided the order and the cut before the bundle arrives; reading it is for saying "build
+ * around these" in a prompt and for knowing what a practice event should be recorded against.
+ */
 export interface BundledWord {
   word: Word
   signals: WordSignals
+  focus: boolean
+}
+
+/** As `BundledWord`. Wrapped rather than bare so focus reads the same way on both. */
+export interface BundledSentence {
+  sentence: Sentence
+  focus: boolean
 }
 
 export interface BundledEntry {
@@ -69,8 +83,10 @@ export interface ContextBundle {
   notebookId: Id
   profile?: NotebookProfile
   words: BundledWord[]
-  sentences: Sentence[]
+  sentences: BundledSentence[]
   entries: BundledEntry[]
+  /** What the learner focused, if anything. Absent means the whole notebook. */
+  scope?: WorkbookScope
 }
 
 /* ── what a workbook may do to the journal ────────────────────────────────── */
@@ -109,8 +125,13 @@ export interface JournalWriter {
 export interface AI {
   complete: (input: string | Message[], opts?: CompleteOptions) => Promise<string>
   completeJson: <T>(input: string | Message[], opts: JsonOptions<T>) => Promise<T>
-  /** Speaks a line in the notebook's language. Reused within the page load, never stored (§1). */
-  speak: (text: string) => Promise<Blob>
+  /**
+   * Speaks a line in the notebook's language. Reused within the page load, never stored (§1).
+   *
+   * The voice is open because a two-speaker dialog needs two of them. The language is not, so a
+   * workbook still cannot ask for the wrong language for the notebook it is running in.
+   */
+  speak: (text: string, opts?: { voice?: string }) => Promise<Blob>
   draw: (prompt: string) => Promise<Blob>
   /** Defined, and the one route in `ai/` that has not been verified against the live API. */
   animate: (prompt: string, signal?: AbortSignal) => Promise<Blob>
@@ -142,8 +163,10 @@ export interface WorkbookManifest<S = unknown> {
    * The workbook's own glyph, on its practice row and its docked chip.
    *
    * Every exercise is a separate workbook, so each one is recognisable on sight rather than borrowing
-   * the section's glyph. Keep these in Lucide's notebook family: the shared spiral binding is what
-   * makes the practice page read as a shelf, and the variant is what names the activity.
+   * the section's glyph. Keep these in Lucide's book family: the shared covers are what make the
+   * practice page read as a shelf, and the variant is what names the activity. `BookHeadphones` and
+   * `BookImage` name a modality more directly than any notebook variant could, which is why the family
+   * is books rather than the narrower notebooks the first two picked from.
    */
   icon: LucideIcon
   /** What it needs from the notebook. */
@@ -165,4 +188,4 @@ export type AnyWorkbook = WorkbookManifest<never> & { Component: ComponentType<W
 /** Narrows a typed manifest for the registry. The cast is contained to this one function. */
 export const register = <S,>(m: WorkbookManifest<S>): AnyWorkbook => m as unknown as AnyWorkbook
 
-export type { Notebook }
+export type { Notebook, WorkbookScope }

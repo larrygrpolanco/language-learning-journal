@@ -10,6 +10,8 @@ import {
   saveSessionState,
   setSessionLabel,
 } from './sessions'
+import type { OpenSessionInput } from './sessions'
+import type { WorkbookScope } from '../db/types'
 
 /**
  * The session round trip. The plan names this as owed, and it is the one thing in the dock worth
@@ -26,6 +28,10 @@ beforeEach(async () => {
   await d.open()
 })
 
+/** One notebook and one workbook is the usual case, so only the label is worth writing out. */
+const start = (label: string, over: Partial<OpenSessionInput> = {}, into: JournalDb = d) =>
+  openSession({ notebookId: 'nb', workbookId: 'word-drill', label, ...over }, into)
+
 interface DrillState {
   at: number
   asked: string[]
@@ -34,7 +40,7 @@ interface DrillState {
 
 describe('a session state round trip', () => {
   it('hands back exactly what the workbook handed over', async () => {
-    const id = await openSession('nb', 'word-drill', 'starting', d)
+    const id = await start('starting')
 
     const state: DrillState = {
       at: 2,
@@ -53,7 +59,7 @@ describe('a session state round trip', () => {
   })
 
   it('keeps state written by setState without changing status', async () => {
-    const id = await openSession('nb', 'word-drill', 'starting', d)
+    const id = await start('starting')
     await saveSessionState(id, { at: 1 }, d)
 
     const back = await getSession(id, d)
@@ -62,7 +68,7 @@ describe('a session state round trip', () => {
   })
 
   it('leaves state alone when docking without one', async () => {
-    const id = await openSession('nb', 'word-drill', 'starting', d)
+    const id = await start('starting')
     await saveSessionState(id, { at: 3 }, d)
     await dockSession(id, undefined, d)
 
@@ -75,7 +81,7 @@ describe('a session state round trip', () => {
     const name = `sessions-reload-${counter}`
     const first = new JournalDb(name)
     await first.open()
-    const id = await openSession('nb', 'word-drill', '2 of 8', first)
+    const id = await start('2 of 8', {}, first)
     await dockSession(id, { at: 2 }, first)
     first.close()
 
@@ -88,19 +94,53 @@ describe('a session state round trip', () => {
   })
 })
 
+/**
+ * The focus scope, which is stored once at open and never revised.
+ *
+ * Worth its own tests for the same reason state is: a scope lost on the way to the dock means a
+ * restored exercise quietly rebuilds itself around the whole notebook instead of the two entries the
+ * learner picked, and nothing on screen says so.
+ */
+describe('the focus scope', () => {
+  const scope: WorkbookScope = { entryIds: ['e1', 'e2'], wordIds: ['w1'], sentenceIds: ['s1'] }
+
+  it('is absent when nothing was focused, rather than an empty scope', async () => {
+    const back = await getSession(await start('starting'), d)
+    expect(back?.scope).toBeUndefined()
+    expect('scope' in back!).toBe(false)
+  })
+
+  it('is stored on open and survives being docked', async () => {
+    const id = await start('starting', { scope })
+    expect((await getSession(id, d))?.scope).toEqual(scope)
+
+    await dockSession(id, { at: 1 }, d)
+    const back = await getSession(id, d)
+    expect(back?.scope).toEqual(scope)
+    expect(back?.state).toEqual({ at: 1 })
+  })
+
+  it('survives being restored from the dock', async () => {
+    const id = await start('starting', { scope })
+    await dockSession(id, { at: 1 }, d)
+    await expandSession(id, d)
+    expect((await getSession(id, d))?.scope).toEqual(scope)
+  })
+})
+
 describe('at most one expanded', () => {
   it('docks the open session when a second is started', async () => {
-    const first = await openSession('nb', 'word-drill', 'first', d)
-    const second = await openSession('nb', 'word-drill', 'second', d)
+    const first = await start('first')
+    const second = await start('second')
 
     expect((await getSession(first, d))?.status).toBe('docked')
     expect((await getSession(second, d))?.status).toBe('open')
   })
 
   it('docks the open session when a docked one is restored', async () => {
-    const first = await openSession('nb', 'word-drill', 'first', d)
+    const first = await start('first')
     await dockSession(first, { at: 1 }, d)
-    const second = await openSession('nb', 'word-drill', 'second', d)
+    const second = await start('second')
 
     await expandSession(first, d)
 
@@ -111,8 +151,8 @@ describe('at most one expanded', () => {
   })
 
   it('does not touch a session in another notebook', async () => {
-    const mine = await openSession('nb-a', 'word-drill', 'mine', d)
-    await openSession('nb-b', 'word-drill', 'theirs', d)
+    const mine = await start('mine', { notebookId: 'nb-a' })
+    await start('theirs', { notebookId: 'nb-b' })
 
     // The notebook is the boundary, so opening one elsewhere leaves this one expanded.
     expect((await getSession(mine, d))?.status).toBe('open')
@@ -121,20 +161,20 @@ describe('at most one expanded', () => {
 
 describe('the dock', () => {
   it('lists only docked sessions for this notebook, oldest first', async () => {
-    const a = await openSession('nb', 'word-drill', 'a', d)
+    const a = await start('a')
     await dockSession(a, undefined, d)
-    const b = await openSession('nb', 'word-drill', 'b', d)
+    const b = await start('b')
     await dockSession(b, undefined, d)
-    const open = await openSession('nb', 'word-drill', 'still open', d)
-    await openSession('other', 'word-drill', 'elsewhere', d)
+    const stillOpen = await start('still open')
+    await start('elsewhere', { notebookId: 'other' })
 
     const chips = await dockedSessions('nb', d)
     expect(chips.map((s) => s.label)).toEqual(['a', 'b'])
-    expect(chips.some((s) => s.id === open)).toBe(false)
+    expect(chips.some((s) => s.id === stillOpen)).toBe(false)
   })
 
   it('reads the label the workbook set', async () => {
-    const id = await openSession('nb', 'word-drill', 'starting', d)
+    const id = await start('starting')
     await setSessionLabel(id, '3 of 8', d)
     await dockSession(id, undefined, d)
 
@@ -142,7 +182,7 @@ describe('the dock', () => {
   })
 
   it('drops a closed session entirely, since closing saves nothing', async () => {
-    const id = await openSession('nb', 'word-drill', 'a', d)
+    const id = await start('a')
     await dockSession(id, { at: 1 }, d)
     await closeSession(id, d)
 

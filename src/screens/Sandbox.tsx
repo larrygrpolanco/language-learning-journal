@@ -60,7 +60,7 @@ const SandboxInner = () => {
     if (!db) return
     setError(undefined)
     try {
-      setBundle(await buildContext(FIXTURE_NOTEBOOK, workbook.request, db))
+      setBundle(await buildContext(FIXTURE_NOTEBOOK, workbook.request, undefined, { d: db }))
       setState(undefined)
       setLabel('')
       setPicked(workbook)

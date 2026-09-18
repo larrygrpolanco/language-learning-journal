@@ -1,8 +1,9 @@
 import { db, type JournalDb } from '../db/db'
 import { signalsFor } from '../journal/derive'
-import type { Id, Sentence } from '../db/types'
+import type { Id, Sentence, Word, WorkbookScope } from '../db/types'
 import type {
   BundledEntry,
+  BundledSentence,
   BundledWord,
   BundleRequest,
   ContextBundle,
@@ -49,35 +50,46 @@ const shuffled = <T>(xs: readonly T[], rng: Rng): T[] => {
   return out
 }
 
-/**
- * Filters and orders candidate words for a request.
- *
- * `least-practiced` puts words never practised at all first, because a word with no practice event is
- * the least practised thing in the notebook and a workbook asking for that order wants those.
- */
-export const selectWords = (
-  candidates: readonly BundledWord[],
+/** The request's own filters. Applied to background material only. */
+const passing = (
+  rows: readonly BundledWord[],
   spec: NonNullable<BundleRequest['words']>,
-  now: Date = new Date(),
-  rng: Rng = Math.random,
+  now: Date,
 ): BundledWord[] => {
-  let rows = [...candidates]
+  let out = [...rows]
 
   if (spec.familiarity && spec.familiarity.length > 0) {
     const wanted = new Set(spec.familiarity)
-    rows = rows.filter((r) => wanted.has(r.signals.familiarity))
+    out = out.filter((r) => wanted.has(r.signals.familiarity))
   }
 
   if (spec.recentDays !== undefined) {
     const cutoff = now.getTime() - spec.recentDays * DAY_MS
-    rows = rows.filter((r) => r.signals.lastSeen !== undefined && Date.parse(r.signals.lastSeen) >= cutoff)
+    out = out.filter(
+      (r) => r.signals.lastSeen !== undefined && Date.parse(r.signals.lastSeen) >= cutoff,
+    )
   }
 
-  if (spec.order === 'random') {
-    rows = shuffled(rows, rng)
-  } else if (spec.order === 'least-practiced') {
+  return out
+}
+
+/**
+ * The request's order, within one group.
+ *
+ * `least-practiced` puts words never practised at all first, because a word with no practice event is
+ * the least practised thing in the notebook and a workbook asking for that order wants those.
+ */
+const ordered = (
+  rows: readonly BundledWord[],
+  spec: NonNullable<BundleRequest['words']>,
+  rng: Rng,
+): BundledWord[] => {
+  if (spec.order === 'random') return shuffled(rows, rng)
+
+  const out = [...rows]
+  if (spec.order === 'least-practiced') {
     // Never practised sorts first. Otherwise oldest practice first.
-    rows.sort((a, b) => {
+    out.sort((a, b) => {
       const x = a.signals.lastPracticed
       const y = b.signals.lastPracticed
       if (x === undefined && y === undefined) return a.word.term < b.word.term ? -1 : 1
@@ -87,20 +99,58 @@ export const selectWords = (
     })
   } else {
     // 'recent' and the default: most recently met first, and a word never met sorts last.
-    rows.sort((a, b) => (b.signals.lastSeen ?? '').localeCompare(a.signals.lastSeen ?? ''))
+    out.sort((a, b) => (b.signals.lastSeen ?? '').localeCompare(a.signals.lastSeen ?? ''))
   }
+  return out
+}
 
+/**
+ * Filters and orders candidate words for a request, focus first.
+ *
+ * **An explicit focus bypasses `familiarity` and `recentDays`.** Without that exemption, focusing an
+ * entry from eight months ago against word drill's `recentDays: 60` would filter the chosen words
+ * straight back out, and the exercise would look broken for doing exactly what it was told.
+ *
+ * The limit applies after the two groups are joined, so twelve focus words against `limit: 8` yield
+ * eight focus words and no background. That is the point of focusing rather than a flaw in it.
+ */
+export const selectWords = (
+  candidates: readonly BundledWord[],
+  spec: NonNullable<BundleRequest['words']>,
+  now: Date = new Date(),
+  rng: Rng = Math.random,
+): BundledWord[] => {
+  const focus = ordered(
+    candidates.filter((r) => r.focus),
+    spec,
+    rng,
+  )
+  const background = ordered(
+    passing(
+      candidates.filter((r) => !r.focus),
+      spec,
+      now,
+    ),
+    spec,
+    rng,
+  )
+
+  const rows = [...focus, ...background]
   return spec.limit !== undefined ? rows.slice(0, Math.max(0, spec.limit)) : rows
 }
 
 export const selectSentences = (
-  candidates: readonly Sentence[],
+  candidates: readonly BundledSentence[],
   spec: NonNullable<BundleRequest['sentences']>,
-): Sentence[] => {
-  let rows = [...candidates]
+): BundledSentence[] => {
+  // Newest first, matching everything else in the app, and focus ahead of the rest.
+  const newest = (a: BundledSentence, b: BundledSentence) =>
+    a.sentence.createdAt < b.sentence.createdAt ? 1 : -1
 
-  // Newest first, matching everything else in the app.
-  rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  const rows = [
+    ...candidates.filter((r) => r.focus).sort(newest),
+    ...candidates.filter((r) => !r.focus).sort(newest),
+  ]
 
   return spec.limit !== undefined ? rows.slice(0, Math.max(0, spec.limit)) : rows
 }
@@ -108,19 +158,43 @@ export const selectSentences = (
 /* ── the read ─────────────────────────────────────────────────────────────── */
 
 /**
+ * The database handle and the two sources of nondeterminism, in one bag.
+ *
+ * Collected rather than trailing, so `scope` can sit in the argument position that reads like part of
+ * the request while the test seams stay out of the way of the production call sites.
+ */
+export interface ContextDeps {
+  d?: JournalDb
+  now?: Date
+  rng?: Rng
+}
+
+/**
  * Everything the request asked for, and nothing it did not.
  *
  * An absent key means an empty array rather than everything, so a workbook that forgets to ask for
  * sentences gets none instead of the whole notebook.
+ *
+ * `scope` marks material rather than restricting it. Focused rows are flagged, exempted from the
+ * request's filters and sorted first; the rest of the notebook still arrives behind them, because
+ * focusing an entry is a statement about what to build around and not a statement about what to
+ * forget.
  */
 export const buildContext = async (
   notebookId: Id,
   request: BundleRequest,
-  d: JournalDb = db,
-  now: Date = new Date(),
-  rng: Rng = Math.random,
+  scope?: WorkbookScope,
+  deps: ContextDeps = {},
 ): Promise<ContextBundle> => {
+  const d = deps.d ?? db
+  const now = deps.now ?? new Date()
+  const rng = deps.rng ?? Math.random
+
   const bundle: ContextBundle = { notebookId, words: [], sentences: [], entries: [] }
+  if (scope) bundle.scope = scope
+
+  const focusWords = new Set(scope?.wordIds ?? [])
+  const focusSentences = new Set(scope?.sentenceIds ?? [])
 
   if (request.notebookProfile) {
     const notebook = await d.notebooks.get(notebookId)
@@ -155,6 +229,7 @@ export const buildContext = async (
           practice.filter((p) => p.targetId === word.id),
           now,
         ),
+        focus: focusWords.has(word.id),
       }
     })
 
@@ -163,13 +238,26 @@ export const buildContext = async (
 
   if (request.sentences) {
     const sentences = await d.sentences.where('notebookId').equals(notebookId).toArray()
-    bundle.sentences = selectSentences(sentences, request.sentences)
+    bundle.sentences = selectSentences(
+      sentences.map((sentence) => ({ sentence, focus: focusSentences.has(sentence.id) })),
+      request.sentences,
+    )
   }
 
   if (request.entries) {
     const rows = (await d.entries.where('notebookId').equals(notebookId).sortBy('date')).reverse()
+
+    // A focused entry is the one the exercise is being built around, so it leads regardless of date
+    // and survives a limit that would otherwise have cut it.
+    const focused = scope?.entryIds !== undefined ? new Set(scope.entryIds) : undefined
+    const sorted = focused
+      ? [...rows.filter((e) => focused.has(e.id)), ...rows.filter((e) => !focused.has(e.id))]
+      : rows
+
     const limited =
-      request.entries.limit !== undefined ? rows.slice(0, Math.max(0, request.entries.limit)) : rows
+      request.entries.limit !== undefined
+        ? sorted.slice(0, Math.max(0, request.entries.limit))
+        : sorted
 
     bundle.entries = limited.map((e): BundledEntry => {
       const out: BundledEntry = { id: e.id, date: e.date }
@@ -181,4 +269,45 @@ export const buildContext = async (
   }
 
   return bundle
+}
+
+/* ── what the focus picker offers ─────────────────────────────────────────── */
+
+export interface FocusCandidates {
+  words: Word[]
+  sentences: Sentence[]
+}
+
+/**
+ * The words and sentences reachable from a set of entries.
+ *
+ * What the picker shows underneath the entries as they are ticked. Read through `Encounter`, which is
+ * the record that says a word came up in an entry, so this is the same relationship the entry footer
+ * and "Words from this entry" already display rather than a second definition of belonging.
+ */
+export const focusCandidates = async (
+  notebookId: Id,
+  entryIds: readonly Id[],
+  d: JournalDb = db,
+): Promise<FocusCandidates> => {
+  if (entryIds.length === 0) return { words: [], sentences: [] }
+
+  const encounters = (
+    await d.encounters
+      .where('entryId')
+      .anyOf([...entryIds])
+      .toArray()
+  ).filter((e) => e.notebookId === notebookId)
+
+  const wordIds = [...new Set(encounters.filter((e) => e.targetType === 'word').map((e) => e.targetId))]
+  const sentenceIds = [
+    ...new Set(encounters.filter((e) => e.targetType === 'sentence').map((e) => e.targetId)),
+  ]
+
+  const words = (await d.words.bulkGet(wordIds)).flatMap((w) => (w ? [w] : []))
+  const sentences = (await d.sentences.bulkGet(sentenceIds)).flatMap((s) => (s ? [s] : []))
+
+  words.sort((a, b) => a.term.localeCompare(b.term))
+  sentences.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  return { words, sentences }
 }

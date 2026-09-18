@@ -38,7 +38,7 @@ export const Practice = () => {
 
   const start = async (workbookId: string, label: string) => {
     if (!nb) return
-    const id = await openSession(nb, workbookId, label)
+    const id = await openSession({ notebookId: nb, workbookId, label })
     // A search param rather than a route, so the practice page stays mounted underneath and
     // minimizing puts the learner back here without a reload.
     navigate(`/n/${nb}/practice?workbook=${id}`)

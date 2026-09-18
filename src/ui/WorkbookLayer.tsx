@@ -92,7 +92,9 @@ export const WorkbookLayer = () => {
         // The language comes off the notebook, not the bundle. A workbook that never asked for
         // `notebookProfile` would otherwise get an AI surface that speaks in no language at all.
         const notebook = await db.notebooks.get(session.notebookId)
-        const bundle = await buildContext(session.notebookId, manifest.request)
+        // The scope was resolved when the session opened, so restoring one rebuilds the same focus
+        // even if the entries behind it have since been edited.
+        const bundle = await buildContext(session.notebookId, manifest.request, session.scope)
         if (!live) return
 
         setLoaded({

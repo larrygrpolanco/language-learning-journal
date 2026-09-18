@@ -1,5 +1,5 @@
 import { db, newId, nowIso, type JournalDb } from '../db/db'
-import type { Id, WorkbookSession } from '../db/types'
+import type { Id, WorkbookScope, WorkbookSession } from '../db/types'
 
 /**
  * Workbook sessions. Technical plan §7.
@@ -26,28 +26,35 @@ export const getSession = async (
   d: JournalDb = db,
 ): Promise<WorkbookSession | undefined> => d.sessions.get(sessionId)
 
+export interface OpenSessionInput {
+  notebookId: Id
+  workbookId: string
+  label: string
+  /** What the learner focused on the practice row. Absent means the whole notebook. */
+  scope?: WorkbookScope | undefined
+}
+
 /**
  * Starts a session, docking any that was expanded.
  *
  * §7: opening a second workbook while one is expanded docks the first, with no prompt. Doing that here
  * rather than in the UI means it holds however the session was started, including from a link.
+ *
+ * The scope is stored once, at open, and never revised. It carries resolved word and sentence ids, so
+ * an exercise cannot silently gain material because one of its entries was edited while it sat docked.
  */
-export const openSession = async (
-  notebookId: Id,
-  workbookId: string,
-  label: string,
-  d: JournalDb = db,
-): Promise<Id> =>
+export const openSession = async (input: OpenSessionInput, d: JournalDb = db): Promise<Id> =>
   d.transaction('rw', [d.sessions], async () => {
-    await dockOthers(notebookId, undefined, d)
+    await dockOthers(input.notebookId, undefined, d)
 
     const at = nowIso()
     const session: WorkbookSession = {
       id: newId(),
-      notebookId,
-      workbookId,
-      label,
+      notebookId: input.notebookId,
+      workbookId: input.workbookId,
+      label: input.label,
       state: undefined,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
       status: 'open',
       openedAt: at,
       touchedAt: at,

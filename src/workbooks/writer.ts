@@ -46,13 +46,14 @@ export const journalWriterFor = (
 /**
  * The AI surface, with the notebook's language already bound.
  *
- * `speak` takes only the text because a workbook should not be able to ask for the wrong language for
- * the notebook it is running in.
+ * The language is fixed so a workbook cannot ask for the wrong one for the notebook it is running in.
+ * The voice is not, because a two-speaker dialog needs two of them and a voice id says nothing about
+ * which notebook this is.
  */
 export const aiFor = (language: string): AI => ({
   complete: (input, opts) => complete(input, opts ?? {}),
   completeJson: (input, opts) => completeJson(input, opts),
-  speak: (text) => speak(text, language),
+  speak: (text, opts) => speak(text, language, opts ?? {}),
   draw: (prompt) => drawOne(prompt),
   animate: (prompt, signal) => animate(prompt, signal),
 })

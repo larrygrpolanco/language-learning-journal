@@ -141,6 +141,22 @@ export interface PracticeEvent {
   at: Iso
 }
 
+/**
+ * Material a session was told to build around. Technical plan §8.
+ *
+ * A marking, not a filter. Focused items sort first and are exempt from the request's own filters;
+ * everything else in the notebook still comes in behind them as background.
+ *
+ * Resolved ids rather than entry ids alone, so a running session cannot silently gain a word because
+ * one of its entries was edited after it started. Un-indexed, like `Word.audioMediaId`, because it is
+ * only ever read forwards off a session already in hand.
+ */
+export interface WorkbookScope {
+  entryIds: Id[]
+  wordIds: Id[]
+  sentenceIds: Id[]
+}
+
 /** Opaque to everything but the workbook that owns it. Technical plan §7. */
 export interface WorkbookSession {
   id: Id
@@ -149,6 +165,8 @@ export interface WorkbookSession {
   /** What the dock chip reads. Set by the workbook. */
   label: string
   state: unknown
+  /** Absent means the whole notebook. */
+  scope?: WorkbookScope
   status: 'open' | 'docked'
   openedAt: Iso
   touchedAt: Iso
