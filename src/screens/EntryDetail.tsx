@@ -1,16 +1,18 @@
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BookOpen, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { db } from '../db/db'
 import { entryOrdinal, neighbourEntries } from '../journal/writes'
 import { RailButton, RailLink, SectionLabel, Shell } from '../ui/Shell'
 import { Plate } from '../ui/Plate'
+import { Viewer } from '../ui/Viewer'
 import { Capturable } from '../ui/Capturable'
 import { Speak } from '../ui/Speak'
 import { Extract } from './Extract'
 import { useMedia, useNotebook } from '../ui/hooks'
 import { longDate, shortDate } from '../ui/format'
-import type { Id } from '../db/types'
+import type { Attachment, Id } from '../db/types'
 
 /**
  * Reading one day back. UI guide §3.
@@ -30,6 +32,7 @@ export const EntryDetail = () => {
   const notebook = useNotebook(nb)
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
+  const [viewing, setViewing] = useState<Attachment>()
 
   // Extract is a modal over the entry, so it lives in a search param rather than a route. That gives
   // it browser back for free, which is the right way out of a dialog. Technical plan §6.
@@ -154,6 +157,7 @@ export const EntryDetail = () => {
                 media={a.mediaId ? media.get(a.mediaId) : undefined}
                 width={112}
                 height={80}
+                onClick={() => setViewing(a)}
               />
             ))}
         </div>
@@ -179,10 +183,7 @@ export const EntryDetail = () => {
               <div className="ed-sentences">
                 {sentences.map((s) => (
                   <div key={s.id} className="sentence-row">
-                    <Link
-                      to={`/n/${nb}/sentences/${s.id}`}
-                      className={s.origin === 'encountered' ? 'sentence' : 'sentence sentence-mine'}
-                    >
+                    <Link to={`/n/${nb}/sentences/${s.id}`} className="sentence">
                       {s.text}
                       {s.translation ? (
                         <div className="sentence-translation">{s.translation}</div>
@@ -210,6 +211,14 @@ export const EntryDetail = () => {
           // Clearing the param rather than navigating, so back out of the dialog lands on the entry
           // instead of wherever the entry was opened from.
           onClose={() => setParams({}, { replace: true })}
+        />
+      ) : null}
+
+      {viewing ? (
+        <Viewer
+          attachment={viewing}
+          media={viewing.mediaId ? media.get(viewing.mediaId) : undefined}
+          onClose={() => setViewing(undefined)}
         />
       ) : null}
     </Shell>

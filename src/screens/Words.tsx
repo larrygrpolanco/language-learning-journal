@@ -213,10 +213,7 @@ const WordDetail = ({ nb, wordId, language }: { nb: Id; wordId: Id; language: st
           <div className="sentence-list">
             {sentences.map((s: Sentence) => (
               <div key={s.id} className="sentence-row">
-                <Link
-                  to={`/n/${nb}/sentences/${s.id}`}
-                  className={s.origin === 'encountered' ? 'sentence' : 'sentence sentence-mine'}
-                >
+                <Link to={`/n/${nb}/sentences/${s.id}`} className="sentence">
                   {s.text}
                   {s.translation ? <div className="sentence-translation">{s.translation}</div> : null}
                 </Link>

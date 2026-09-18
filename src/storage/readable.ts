@@ -66,8 +66,7 @@ export const renderReadable = (d: NotebookData, exportedAt = new Date()): string
     if (sentences.length > 0) {
       out.push('**Sentences**', '')
       for (const s of sentences) {
-        const origin = s.origin === 'encountered' ? '' : ` [${s.origin}]`
-        out.push(`- ${s.text}${origin}${s.translation ? ` — *${s.translation}*` : ''}`)
+        out.push(`- ${s.text}${s.translation ? ` — *${s.translation}*` : ''}`)
       }
       out.push('')
     }

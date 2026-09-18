@@ -42,7 +42,6 @@ Links:
  Entry ──encounters──▶ Word
  Entry ──encounters──▶ Sentence
  Word  ──appears in──▶ Sentence
- Sentence(corrected) ──corrects──▶ Sentence(mine)
 ```
 
 The three learning units:
@@ -51,7 +50,7 @@ The three learning units:
 |---|---|---|
 | **Entry** | a moment | When and where learning happened. |
 | **Word** | a piece of vocabulary | A term the learner wants to know and use. |
-| **Sentence** | language in use | One real line of the language, with where it came from. |
+| **Sentence** | language in use | One real line of the language. |
 
 ---
 
@@ -131,7 +130,6 @@ One real line of the target language.
 | Field | Required | Notes |
 |---|---|---|
 | text | yes | |
-| origin | yes | `encountered`, `mine`, or `corrected` (see below). Defaults to `encountered`. |
 | translation | no | In the notebook's meaning language. |
 | note | no | e.g. why a correction was needed. |
 
@@ -144,7 +142,6 @@ One real line of the target language.
 | Entry → Word | "this word came up in this moment" | When a word is added from or extracted from an entry; also when an existing word is noticed again. |
 | Entry → Sentence | "this sentence came up in this moment" | Same as above. |
 | Word → Sentence | "this word appears in this sentence" | **Derived** automatically (requires word segmentation for Chinese and Korean). Can be recomputed and manually adjusted. |
-| Sentence → Sentence | "corrected fixes mine" | Set when a correction is recorded. |
 
 **Rule:** every word and sentence has at least one encounter. If one is added outside an entry (e.g. from a notebook's word list), it's linked to **today's entry**, which is created if needed. This keeps every piece of knowledge tied to a point in time and means the journal grows even from quick additions.
 
@@ -186,7 +183,7 @@ Quick adds (a single word or sentence) are also available from anywhere in the n
 
 | Mode | What it does | Output |
 |---|---|---|
-| **Extract** | An LLM reads an entry and/or its attachments and proposes words and sentences (including `mine`/`corrected` pairs when a correction is visible). | Proposals |
+| **Extract** | An LLM reads an entry and/or its attachments and proposes words and sentences. | Proposals |
 | **Reflect** | A short reflective conversation with an LLM about the entry ("what was hard?", "how would you say…?"). | The conversation is saved into the entry (the journal benefits even without the other layers), plus optional proposals. |
 | **Manual** | Add or edit words, sentences, and links directly. | Direct changes |
 
@@ -211,7 +208,7 @@ An activity requests a context bundle for one notebook, optionally filtered. The
 - **Notebook profile:** language, focus, meaning language, language settings.
 - **Recent entries:** dates, topics, body text or summaries, sources.
 - **Words:** with meanings, readings, and derived signals (first/last seen, encounter count, active/passive, familiarity, practice history summary).
-- **Sentences:** with origins, translations, and correction pairs.
+- **Sentences:** with translations and notes.
 
 How an activity uses the bundle, including asking the learner questions or taking feedback to shape the session, is entirely up to that activity.
 
@@ -254,7 +251,7 @@ The app must be fully useful to someone who never processes anything or runs any
 - **Entry:** a dated moment of learning; the journal itself.
 - **Attachment:** raw material on an entry, stored as-is.
 - **Word:** a vocabulary item, single-word or multi-word.
-- **Sentence:** a real line of the target language, with origin `encountered`, `mine`, or `corrected`.
+- **Sentence:** a real line of the target language, with an optional translation.
 - **Encounter:** a link recording that a word or sentence came up in an entry.
 - **Proposal:** AI-suggested content awaiting learner review.
 - **Harness:** an activity module's teaching logic and generation pipeline.

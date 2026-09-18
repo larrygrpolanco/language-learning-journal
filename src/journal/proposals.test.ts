@@ -76,16 +76,16 @@ describe('dedupeProposedWords', () => {
 describe('dedupeProposedSentences', () => {
   it('drops an identical line proposed twice in one batch', () => {
     const out = dedupeProposedSentences([
-      { text: '제가 치울게요', origin: 'mine' },
-      { text: '제가 치울게요  ', origin: 'mine' },
+      { text: '제가 치울게요' },
+      { text: '제가 치울게요  ' },
     ])
     expect(out).toHaveLength(1)
   })
 
   it('keeps two genuinely different lines', () => {
     const out = dedupeProposedSentences([
-      { text: '제가 치울게요', origin: 'mine' },
-      { text: '얼른 오세요', origin: 'encountered' },
+      { text: '제가 치울게요' },
+      { text: '얼른 오세요' },
     ])
     expect(out).toHaveLength(2)
   })
@@ -119,10 +119,7 @@ describe('splitProposals', () => {
 
   it('carries sentences through without deduplicating against the notebook', () => {
     // Sentences are evidence, not the deduplicated unit. The same line on two days is two records.
-    const split = splitProposals(
-      draft({ sentences: [{ text: '제가 치울게요', origin: 'mine' }] }),
-      [],
-    )
+    const split = splitProposals(draft({ sentences: [{ text: '제가 치울게요' }] }), [])
     expect(split.sentences).toHaveLength(1)
   })
 })

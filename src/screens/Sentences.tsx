@@ -9,7 +9,7 @@ import { Speak } from '../ui/Speak'
 import { Regenerate } from '../ui/Regenerate'
 import { useNotebook } from '../ui/hooks'
 import { shortDate } from '../ui/format'
-import type { Entry, Id, Sentence, SentenceOrigin, Word } from '../db/types'
+import type { Entry, Id, Sentence, Word } from '../db/types'
 
 /**
  * Index left, detail right, the same frame as the words screen.
@@ -117,7 +117,6 @@ export const Sentences = () => {
                   <span className="sn-text">{s.text}</span>
                   {s.translation ? <span className="ix-row-sub">{s.translation}</span> : null}
                 </span>
-                <span className={originClass(s.origin)}>{originLabel(s.origin)}</span>
               </Link>
             ))}
           </div>
@@ -138,14 +137,6 @@ export const Sentences = () => {
     </Shell>
   )
 }
-
-const ORIGINS: readonly SentenceOrigin[] = ['encountered', 'mine', 'corrected']
-
-/** `encountered` reads as "heard", the same word quick add uses. The other two say themselves. */
-const originLabel = (o: SentenceOrigin): string => (o === 'encountered' ? 'heard' : o)
-
-const originClass = (o: SentenceOrigin): string =>
-  o === 'corrected' ? 'sn-origin sn-origin-corrected' : 'sn-origin'
 
 const SentenceDetail = ({
   nb,
@@ -170,20 +161,13 @@ const SentenceDetail = ({
     const links = await db.wordInSentences.where('sentenceId').equals(sentenceId).toArray()
     const words = (await db.words.bulkGet(links.map((l) => l.wordId))).flatMap((w) => (w ? [w] : []))
 
-    return {
-      sentence,
-      entries,
-      words,
-      // Shown because the origin control below can drop this link. A sentence that quietly stopped
-      // correcting something would be worse than the line of text it takes to say so.
-      corrects: sentence.correctsId ? await db.sentences.get(sentence.correctsId) : undefined,
-    }
+    return { sentence, entries, words }
   }, [sentenceId])
 
   if (data === undefined) return null
   if (data === null) return <p className="text-muted">That sentence is gone.</p>
 
-  const { sentence, entries, words, corrects } = data
+  const { sentence, entries, words } = data
 
   if (editing) {
     return <SentenceEdit sentence={sentence} language={language} onClose={() => setEditing(false)} />
@@ -192,7 +176,7 @@ const SentenceDetail = ({
   return (
     <>
       <div className="sentence-row sn-detail-text">
-        <div className={sentence.origin === 'encountered' ? 'sentence' : 'sentence sentence-mine'}>
+        <div className="sentence">
           {sentence.text}
           {sentence.translation ? (
             <div className="sentence-translation">{sentence.translation}</div>
@@ -207,30 +191,6 @@ const SentenceDetail = ({
       </div>
 
       {sentence.note ? <p className="sn-note">{sentence.note}</p> : null}
-
-      <SectionLabel>Where it came from</SectionLabel>
-      <div className="seg ix-seg">
-        {ORIGINS.map((o) => (
-          <label key={o} className="seg-opt">
-            <input
-              type="radio"
-              name={`origin-${sentence.id}`}
-              checked={sentence.origin === o}
-              onChange={() => void updateSentence(sentence.id, { origin: o })}
-            />
-            {originLabel(o)}
-          </label>
-        ))}
-      </div>
-
-      {corrects ? (
-        <>
-          <SectionLabel>Corrects</SectionLabel>
-          <div className="sentence-list">
-            <div className="sentence sentence-mine">{corrects.text}</div>
-          </div>
-        </>
-      ) : null}
 
       <SectionLabel>Met in</SectionLabel>
       <div className="ix-met">

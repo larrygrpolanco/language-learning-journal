@@ -181,14 +181,12 @@ textarea.ruled {
 
 .target { font-family: var(--font-target); }
 
-/* A sentence carries a 2px left rule. Gold when encountered, divider grey when
-   it is the learner's own. */
+/* A sentence carries a 2px gold left rule. */
 .sentence {
   border-left: 2px solid var(--color-accent);
   padding-left: var(--space-3);
   font-family: var(--font-target);
 }
-.sentence-mine { border-left-color: var(--color-divider); }
 .sentence-translation {
   font-style: italic;
   font-size: 13px;
@@ -657,9 +655,9 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 .ix-regen + .ix-delete { margin-top: var(--space-2); }
 
 /* ── Sentence rows ──────────────────────────────────────────────────────────
-   A sentence is long where a word is short, so the row leads with two lines of it
-   and states where it came from on the right. The 2px origin rule is saved for the
-   detail pane, where there is one sentence rather than forty. */
+   A sentence is long where a word is short, so the row is two clamped lines of it
+   and its translation. The 2px rule is saved for the detail pane, where there is
+   one sentence rather than forty. */
 
 .sn-row { align-items: flex-start; }
 .sn-text {
@@ -671,15 +669,6 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
   line-height: 1.5;
   font-family: var(--font-target);
 }
-.sn-origin {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-neutral-700);
-  flex: none;
-}
-/* Only a correction earns colour, because it is the only origin that says something happened. */
-.sn-origin-corrected { color: var(--color-accent-700); }
 
 .sn-detail-text {
   font-size: 16px;
@@ -750,6 +739,55 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
     var(--color-neutral-200) 0 7px,
     var(--color-neutral-300) 7px 14px
   );
+}
+
+/* ── Viewer ─────────────────────────────────────────────────────────────────
+   The enlarged attachment keeps the plate's mat and hairline, so it reads as the
+   same object closer up rather than as a different screen. Capped to the viewport,
+   because a photographed page is often larger than the window. */
+
+.vw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  max-height: 100%;
+  padding: var(--space-2);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.vw-img {
+  display: block;
+  max-width: min(1100px, 100%);
+  /* Leaves room for the filename line under it, so a tall image never pushes it off. */
+  max-height: calc(100vh - var(--space-8) * 2);
+  object-fit: contain;
+}
+.vw-pdf {
+  width: min(900px, 90vw);
+  height: calc(100vh - var(--space-8) * 2);
+  border: 0;
+}
+.vw-audio { width: min(420px, 80vw); }
+.vw-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--color-accent);
+}
+.vw-name {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Settings ───────────────────────────────────────────────────────────────

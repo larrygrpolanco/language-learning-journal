@@ -11,9 +11,10 @@ import {
 } from '../journal/writes'
 import { RailButton, Shell } from '../ui/Shell'
 import { Plate } from '../ui/Plate'
+import { Viewer } from '../ui/Viewer'
 import { QuickAdd } from '../ui/QuickAdd'
 import { imageSize, kindOf, useMedia, useNotebook } from '../ui/hooks'
-import type { Id } from '../db/types'
+import type { Attachment, Id } from '../db/types'
 
 const AUTOSAVE_MS = 400
 
@@ -53,6 +54,7 @@ export const Composer = () => {
   const [body, setBody] = useState<string>()
   const [saved, setSaved] = useState(false)
   const [adding, setAdding] = useState<'word' | 'sentence'>()
+  const [viewing, setViewing] = useState<Attachment>()
 
   const fileInput = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
@@ -214,6 +216,7 @@ export const Composer = () => {
               media={a.mediaId ? media.get(a.mediaId) : undefined}
               width={76}
               height={54}
+              onClick={() => setViewing(a)}
             />
             <button
               type="button"
@@ -274,6 +277,14 @@ export const Composer = () => {
           entryId={id}
           kind={adding}
           onClose={() => setAdding(undefined)}
+        />
+      ) : null}
+
+      {viewing ? (
+        <Viewer
+          attachment={viewing}
+          media={viewing.mediaId ? media.get(viewing.mediaId) : undefined}
+          onClose={() => setViewing(undefined)}
         />
       ) : null}
     </Shell>

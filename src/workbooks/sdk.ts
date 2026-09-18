@@ -7,7 +7,6 @@ import type {
   PracticeEvent,
   ProposalDraft,
   Sentence,
-  SentenceOrigin,
   Word,
 } from '../db/types'
 import type { WordSignals } from '../journal/derive'
@@ -33,7 +32,7 @@ export interface BundleRequest {
     recentDays?: number
     order?: 'recent' | 'least-practiced' | 'random'
   }
-  sentences?: { limit?: number; origin?: SentenceOrigin[] }
+  sentences?: { limit?: number }
   entries?: { limit?: number; includeBody?: boolean }
 }
 
@@ -94,7 +93,7 @@ export interface Moment {
 export interface JournalWriter {
   saveMoment: (m: Moment) => Promise<Id>
   addWord: (w: { term: string; meaning?: string; note?: string }) => Promise<Id>
-  addSentence: (s: { text: string; translation?: string; origin?: SentenceOrigin }) => Promise<Id>
+  addSentence: (s: { text: string; translation?: string }) => Promise<Id>
   propose: (p: ProposalDraft) => Promise<Id>
   recordPractice: (e: Omit<PracticeEvent, 'id' | 'notebookId' | 'at'>) => Promise<void>
 }

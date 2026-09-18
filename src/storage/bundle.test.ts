@@ -81,9 +81,9 @@ const fixture = (): NotebookBundle => {
       { id: 'w2', notebookId: 'nb1', term: '밑반찬', termKey: '밑반찬', familiarity: 'got it', createdAt: iso, updatedAt: iso },
     ],
     sentences: [
-      { id: 's1', notebookId: 'nb1', text: '오늘 수고하셨습니다.', origin: 'encountered', translation: 'you worked hard today', audioMediaId: 'm3', createdAt: iso },
-      { id: 's2', notebookId: 'nb1', text: '저는 매운 거 잘 먹어요', origin: 'mine', createdAt: iso },
-      { id: 's3', notebookId: 'nb1', text: '저는 매운 것을 잘 먹어요', origin: 'corrected', correctsId: 's2', createdAt: iso },
+      { id: 's1', notebookId: 'nb1', text: '오늘 수고하셨습니다.', translation: 'you worked hard today', audioMediaId: 'm3', createdAt: iso },
+      { id: 's2', notebookId: 'nb1', text: '저는 매운 거 잘 먹어요', createdAt: iso },
+      { id: 's3', notebookId: 'nb1', text: '저는 매운 것을 잘 먹어요', createdAt: iso },
     ],
     encounters: [
       { id: 'c1', notebookId: 'nb1', entryId: 'e1', targetType: 'word', targetId: 'w1', createdAt: iso },
@@ -301,14 +301,6 @@ describe('withFreshIds', () => {
     expect(data.practiceEvents.find((p) => p.targetType === 'sentence')!.targetId).toBe(sentenceId)
   })
 
-  it('keeps a correction pointing at the sentence it corrects', () => {
-    const { data } = withFreshIds(fixture(), freshIds())
-    const corrected = data.sentences.find((s) => s.origin === 'corrected')!
-    const mine = data.sentences.find((s) => s.origin === 'mine')!
-    expect(corrected.correctsId).toBe(mine.id)
-    expect(corrected.correctsId).not.toBe('s2')
-  })
-
   it('keeps an attachment pointing at its media, and the media at its bytes', () => {
     const original = fixture()
     const copy = withFreshIds(original, freshIds())
@@ -356,7 +348,6 @@ describe('withFreshIds', () => {
       expect(known.has(l.sentenceId)).toBe(true)
     }
     for (const p of data.practiceEvents) expect(known.has(p.targetId)).toBe(true)
-    for (const s of data.sentences) if (s.correctsId) expect(known.has(s.correctsId)).toBe(true)
     for (const w of data.words) if (w.audioMediaId) expect(known.has(w.audioMediaId)).toBe(true)
     for (const s of data.sentences) if (s.audioMediaId) expect(known.has(s.audioMediaId)).toBe(true)
   })

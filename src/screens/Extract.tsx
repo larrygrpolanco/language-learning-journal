@@ -360,12 +360,6 @@ const Times = ({ wordId }: { wordId: Id }) => {
   return <>{n === undefined ? '…' : `${ordinalWord(n)} time`}</>
 }
 
-const ORIGIN_LABEL: Record<string, string> = {
-  encountered: 'heard',
-  mine: 'mine',
-  corrected: 'corrected',
-}
-
 const SentenceRowView = ({
   row,
   index,
@@ -382,7 +376,7 @@ const SentenceRowView = ({
     <Tick on={on} />
     <span className="ex-index">{index}</span>
     <span className="ex-term">{row.proposed.text}</span>
-    <span className="ex-note">{ORIGIN_LABEL[row.proposed.origin] ?? row.proposed.origin}</span>
+    <span className="ex-note">{row.proposed.translation ?? ''}</span>
   </label>
 )
 

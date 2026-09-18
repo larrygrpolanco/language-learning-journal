@@ -99,10 +99,6 @@ export const selectSentences = (
 ): Sentence[] => {
   let rows = [...candidates]
 
-  if (spec.origin && spec.origin.length > 0) {
-    const wanted = new Set(spec.origin)
-    rows = rows.filter((s) => wanted.has(s.origin))
-  }
   // Newest first, matching everything else in the app.
   rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 

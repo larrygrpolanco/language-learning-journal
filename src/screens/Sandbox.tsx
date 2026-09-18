@@ -184,7 +184,6 @@ const seed = async (d: JournalDb): Promise<void> => {
     notebookId: FIXTURE_NOTEBOOK,
     text: '제가 치울게요',
     translation: 'let me clear these away',
-    origin: 'mine',
     createdAt: daysAgo(3),
   })
 }

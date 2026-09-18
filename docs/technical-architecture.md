@@ -158,7 +158,6 @@ Timestamps are ISO 8601 strings, stored as text so the bundle stays human-readab
 type Id = string
 type Iso = string
 type Familiarity = 'new' | 'getting it' | 'got it'
-type SentenceOrigin = 'encountered' | 'mine' | 'corrected'
 
 interface Notebook {
   id: Id
@@ -223,10 +222,8 @@ interface Sentence {
   id: Id
   notebookId: Id
   text: string
-  origin: SentenceOrigin
   translation?: string
   note?: string
-  correctsId?: Id           // set on a 'corrected' sentence, points at the 'mine' one
   audioMediaId?: Id         // as Word. Editing the text drops it (§9)
   createdAt: Iso
 }
@@ -486,18 +483,15 @@ Workbook **sessions** are the one exception, and deliberately so: they are app s
 journal data, so they live in `workbooks/sessions.ts` (§7). The rule that matters still holds, because
 no component touches Dexie either way.
 
-Two of these are worth knowing about beyond their names. `appendReflection` writes a Reflect turn into
+One of these is worth knowing about beyond its name. `appendReflection` writes a Reflect turn into
 the entry body under a `---` separator, chosen because it is a real Markdown thematic break so it
 survives into `readable/` as a rule, and because it passes through that renderer's line escaper
-untouched. `acceptProposal` creates every sentence first and wires `correctsId` in a second pass, since
-a corrected sentence can point at one proposed in the same batch.
+untouched.
 
 `deleteWord` and `deleteSentence` were added with the sentences section (§6) and are symmetric on
 purpose. Both take the target's encounters and its `wordInSentences` links, leave the thing on the other
 side of those links alone, and then run `pruneEntryIfEmpty` on every entry they touched, so a quick-add
-that created today's entry and was then deleted leaves nothing behind. `deleteSentence` does one extra
-thing: any sentence whose `correctsId` pointed at it loses that pointer, because a dangling id would
-survive into the export bundle with nothing on the other end.
+that created today's entry and was then deleted leaves nothing behind.
 
 The word delete lived inline in the words screen until then, which was the one place a component wrote
 to Dexie directly. Moving it here restored the rule at the top of this section, and it gained the entry
@@ -582,8 +576,8 @@ one without remembering the day.
 
 So Sentences is its own section beside Words rather than a tab inside a renamed one. The two lists want
 different shapes, which is the whole argument. Words sort alphabetically and carry three familiarity
-dashes and an encounter count. Sentences sort newest first, carry their origin, and have nothing useful
-to sort alphabetically by. One column serving both would have made both worse.
+dashes and an encounter count. Sentences sort newest first and have nothing useful to sort
+alphabetically by. One column serving both would have made both worse.
 
 The frame is shared and the rows are not, which is what the `ix-` CSS prefix marks: `ix-split`,
 `ix-list`, `ix-rule`, `ix-detail` and the row and detail chrome are the index-screen scaffolding, while
@@ -770,7 +764,7 @@ true by construction.
 interface JournalWriter {
   saveMoment(m: { title?: string; body: string; source?: string; media?: Blob[] }): Promise<Id>
   addWord(w: { term: string; meaning?: string; note?: string }): Promise<Id>
-  addSentence(s: { text: string; translation?: string; origin?: SentenceOrigin }): Promise<Id>
+  addSentence(s: { text: string; translation?: string }): Promise<Id>
   propose(p: ProposalDraft): Promise<Id>
   recordPractice(e: Omit<PracticeEvent, 'id' | 'notebookId' | 'at'>): Promise<void>
 }
@@ -818,7 +812,7 @@ interface BundleRequest {
     recentDays?: number
     order?: 'recent' | 'least-practiced' | 'random'
   }
-  sentences?: { limit?: number; origin?: SentenceOrigin[] }
+  sentences?: { limit?: number }
   entries?: { limit?: number; includeBody?: boolean }
 }
 
@@ -1074,7 +1068,7 @@ Ask for structured JSON.
 interface ProposalDraft {
   entryId: Id
   words: { term: string; meaning?: string; note?: string }[]
-  sentences: { text: string; translation?: string; origin: SentenceOrigin; correctsText?: string }[]
+  sentences: { text: string; translation?: string }[]
 }
 ```
 
@@ -1209,18 +1203,18 @@ stays out of the way in a webview that does not need it.
 
 ## 13. Tests
 
-Only the pure logic, and only because these are the places where a silent bug corrupts data. 172 tests
+Only the pure logic, and only because these are the places where a silent bug corrupts data. 178 tests
 across 8 files, all of which run without a browser.
 
 | File | Tests | What it pins |
 |---|---|---|
 | `db/normalize.test.ts` | 14 | `normalizeTerm` across NFC and NFD Hangul, and word-in-sentence matching in Korean and English |
 | `journal/derive.test.ts` | 13 | The derived signal functions against fixed fixtures |
-| `journal/writes.test.ts` | 52 | The write-layer rules: today's-entry linking, one encounter per entry, cascade deletes, the settings spread that must not drop the API key, the word and sentence edits and deletes including the `correctsId` unhook, and kept audio including the drop on a renamed term or edited sentence |
+| `journal/writes.test.ts` | 48 | The write-layer rules: today's-entry linking, one encounter per entry, cascade deletes, the settings spread that must not drop the API key, the word and sentence edits and deletes, and kept audio including the drop on a renamed term or edited sentence |
 | `journal/proposals.test.ts` | 17 | The dedupe split in Extract, known versus new, and the re-extract merge |
-| `storage/bundle.test.ts` | 38 | Zip round trip, the id remap for a new copy including the kept-audio pointers, slugs, deterministic filenames |
+| `storage/bundle.test.ts` | 37 | Zip round trip, the id remap for a new copy including the kept-audio pointers, slugs, deterministic filenames |
 | `storage/transfer.test.ts` | 22 | Collect and apply against a database, including Replace |
-| `workbooks/context.test.ts` | 18 | `buildContext` for each `BundleRequest` shape, and the pure selection rules |
+| `workbooks/context.test.ts` | 17 | `buildContext` for each `BundleRequest` shape, and the pure selection rules |
 | `workbooks/sessions.test.ts` | 10 | Session state surviving the round trip through IndexedDB, and "at most one expanded" |
 
 Database-backed tests run against `fake-indexeddb` on a throwaway `JournalDb` name per test file, which

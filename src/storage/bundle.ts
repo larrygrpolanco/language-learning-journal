@@ -321,7 +321,6 @@ export const withFreshIds = (bundle: NotebookBundle, newId: () => Id): NotebookB
     }),
     sentences: data.sentences.map((s) => {
       const out: Sentence = { ...s, id: sentences.get(s.id)!, notebookId }
-      if (s.correctsId !== undefined) out.correctsId = sentences.get(s.correctsId) ?? s.correctsId
       if (s.audioMediaId !== undefined) out.audioMediaId = media.get(s.audioMediaId) ?? s.audioMediaId
       return out
     }),

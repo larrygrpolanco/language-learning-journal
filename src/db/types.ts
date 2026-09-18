@@ -10,7 +10,6 @@ export type Id = string
 export type Iso = string
 
 export type Familiarity = 'new' | 'getting it' | 'got it'
-export type SentenceOrigin = 'encountered' | 'mine' | 'corrected'
 
 export interface Notebook {
   id: Id
@@ -98,11 +97,8 @@ export interface Sentence {
   id: Id
   notebookId: Id
   text: string
-  origin: SentenceOrigin
   translation?: string
   note?: string
-  /** Set on a 'corrected' sentence, points at the 'mine' one it fixes. */
-  correctsId?: Id
   /** As `Word.audioMediaId`. Editing the text drops it. */
   audioMediaId?: Id
   createdAt: Iso
@@ -167,9 +163,6 @@ export interface ProposedWord {
 export interface ProposedSentence {
   text: string
   translation?: string
-  origin: SentenceOrigin
-  /** On a 'corrected' proposal, the 'mine' text it fixes. Resolved to ids on accept. */
-  correctsText?: string
 }
 
 /** A draft set of words and sentences tied to its source entry. Technical plan §10. */

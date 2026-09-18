@@ -1,5 +1,5 @@
 import { attachmentPart, completeJson, type Message, type Part } from './text'
-import type { ProposalDraft, ProposedSentence, ProposedWord, SentenceOrigin } from '../db/types'
+import type { ProposalDraft, ProposedSentence, ProposedWord } from '../db/types'
 
 /**
  * Extract. Technical plan §10.
@@ -64,19 +64,10 @@ const SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['text', 'translation', 'origin', 'correctsText'],
+        required: ['text', 'translation'],
         properties: {
           text: { type: 'string', description: 'The sentence, in the target language.' },
           translation: { type: ['string', 'null'] },
-          origin: {
-            type: 'string',
-            enum: ['encountered', 'mine', 'corrected'],
-            description: 'encountered if heard or read, mine if the learner produced it.',
-          },
-          correctsText: {
-            type: ['string', 'null'],
-            description: 'On a corrected sentence, the learner wording it fixes.',
-          },
         },
       },
     },
@@ -89,12 +80,8 @@ interface RawDraft {
   sentences: {
     text: string
     translation: string | null
-    origin: SentenceOrigin
-    correctsText: string | null
   }[]
 }
-
-const ORIGINS: readonly string[] = ['encountered', 'mine', 'corrected']
 
 const isRawDraft = (v: unknown): v is RawDraft => {
   if (typeof v !== 'object' || v === null) return false
@@ -104,11 +91,9 @@ const isRawDraft = (v: unknown): v is RawDraft => {
   const wordsOk = o.words.every(
     (w) => typeof w === 'object' && w !== null && typeof (w as { term?: unknown }).term === 'string',
   )
-  const sentencesOk = o.sentences.every((s) => {
-    if (typeof s !== 'object' || s === null) return false
-    const r = s as { text?: unknown; origin?: unknown }
-    return typeof r.text === 'string' && ORIGINS.includes(r.origin as string)
-  })
+  const sentencesOk = o.sentences.every(
+    (s) => typeof s === 'object' && s !== null && typeof (s as { text?: unknown }).text === 'string',
+  )
 
   return wordsOk && sentencesOk
 }
@@ -129,9 +114,8 @@ const clean = (raw: RawDraft, entryId: string): ProposalDraft => {
   for (const s of raw.sentences) {
     const text = s.text.trim()
     if (text === '') continue
-    const out: ProposedSentence = { text, origin: s.origin }
+    const out: ProposedSentence = { text }
     if (s.translation?.trim()) out.translation = s.translation.trim()
-    if (s.correctsText?.trim()) out.correctsText = s.correctsText.trim()
     sentences.push(out)
   }
 
@@ -152,7 +136,6 @@ const instructions = (input: ExtractInput): string =>
     '- The entry is mostly notes, often in another language, with the target language embedded in it. Those embedded words and lines are the material.',
     '- Give a word in the form worth learning: a verb as its dictionary form, a noun bare.',
     '- Write a note only where the entry says something about how a word is used. Otherwise leave it null.',
-    '- A sentence the learner heard or read is `encountered`. One they wrote or said themselves is `mine`. A fixed version of their own wording is `corrected`, and then `correctsText` holds what it fixes.',
     '- Propose a sentence only when the whole line is in the target language.',
     '- Prefer a handful of good items over a long list. An entry with nothing in it should return empty arrays.',
   ]

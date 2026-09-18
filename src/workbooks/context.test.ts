@@ -98,29 +98,17 @@ describe('selectWords', () => {
 })
 
 describe('selectSentences', () => {
-  const sentence = (id: string, origin: Sentence['origin'], days: number): Sentence => ({
+  const sentence = (id: string, days: number): Sentence => ({
     id,
     notebookId: 'nb',
     text: `line ${id}`,
-    origin,
     createdAt: daysAgo(days),
   })
 
-  const rows = [
-    sentence('a', 'encountered', 30),
-    sentence('b', 'mine', 5),
-    sentence('c', 'corrected', 1),
-  ]
+  const rows = [sentence('a', 30), sentence('b', 5), sentence('c', 1)]
 
   it('returns newest first', () => {
     expect(selectSentences(rows, {}).map((s) => s.id)).toEqual(['c', 'b', 'a'])
-  })
-
-  it('filters by origin', () => {
-    expect(selectSentences(rows, { origin: ['mine', 'corrected'] }).map((s) => s.id)).toEqual([
-      'c',
-      'b',
-    ])
   })
 
   it('honours a limit after ordering', () => {
@@ -182,7 +170,6 @@ beforeEach(async () => {
     id: 's1',
     notebookId: 'nb',
     text: '제가 치울게요',
-    origin: 'mine',
     createdAt: daysAgo(1),
   })
   await d.encounters.bulkAdd([
@@ -250,7 +237,7 @@ describe('buildContext', () => {
   })
 
   it('reads sentences for the notebook', async () => {
-    const bundle = await buildContext('nb', { sentences: { origin: ['mine'] } }, d, NOW)
+    const bundle = await buildContext('nb', { sentences: {} }, d, NOW)
     expect(bundle.sentences.map((s) => s.id)).toEqual(['s1'])
   })
 

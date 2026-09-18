@@ -119,8 +119,8 @@ Reading one day back.
 - Body on the ruled sheet, justified.
 - Attachments: row of 112×80 plates.
 - Full-width hairline, then a 2-column footer: **Words from this entry** (term left,
-  meaning right, dotted rule between rows) and **Sentences** (2px left rule — gold for
-  encountered, divider grey for the learner's own; italic translation beneath).
+  meaning right, dotted rule between rows) and **Sentences** (2px gold left rule, italic
+  translation beneath).
 - Header actions: `Reflect`, `Extract` (ghost), `Edit` (secondary).
 - Rail: previous entry, next entry, edit.
 
@@ -150,8 +150,8 @@ A modal over the entry; the entry stays visible and dimmed behind it.
 - Title "Extract from this entry" (Cormorant 24px) + 13px muted line stating the count.
 - Two sections, **Words** and **Sentences**, under 11.5px uppercase labels. Each row is a
   checkbox (14px square, gold border, `--color-accent-200` fill when checked, 2px radius),
-  the term at 15px, and a right-aligned note: the proposed meaning, or the origin
-  (`heard` / `mine`), or — for a term already in the notebook — an italic
+  the term at 15px, and a right-aligned note: the proposed meaning on a word, the proposed
+  translation on a sentence, or, for a term already in the notebook, an italic
   "already in this notebook · 11th time".
 - **Everything is pre-ticked**; accepting is one press.
 - Actions: `Not now` (ghost) left; `Edit each` (secondary) and `Add 5` (primary) right.
@@ -209,21 +209,18 @@ term is short and has no useful alphabetical order.
 
 - Newest first, not alphabetical.
 - List rows: the sentence clamped to two lines in the target face at 14.5px, translation 12.5px muted
-  beneath, and its origin on the right in 11px uppercase — `heard`, `mine`, `corrected`. Only
-  `corrected` is coloured, in gold-700, because it is the only origin that says something happened. The
-  2px origin rule is saved for the detail pane, where there is one sentence rather than forty.
+  beneath, and nothing on the right. A word row's familiarity dashes and encounter count are worth
+  scanning down a column; a sentence has nothing of that shape. The 2px gold rule is saved for the
+  detail pane, where there is one sentence rather than forty.
 - Section label is "All sentences", or "N matching" under a filter, or "N from Fri 12 Sep" when scoped
   to an entry, in which case a small `show all` sits on the same line.
 - Detail: the sentence on its 2px left rule with a `volume-2` beside it, italic translation, the note,
-  a `Where it came from` segmented control carrying the same three origins, **Corrects** when this one
-  fixes another, **Met in**, **Words in it** as outlined tags, `Edit sentence` block button.
+  **Met in**, **Words in it** as outlined tags, `Edit sentence` block button.
 - Editing gives Sentence, Translation and Note fields, then `Regenerate audio` and `Delete this
   sentence` below the actions in the same muted 12px as the words screen's delete.
 
-Behavior: the origin control writes immediately, like familiarity does. **Corrects** is shown whenever
-the link exists, because that control can drop it and a sentence that quietly stopped correcting
-something would be worse than the line of text it costs to say so. Editing the text re-derives which
-words appear in it, and drops the kept clip, which spoke the old wording.
+Behavior: editing the text re-derives which words appear in it, and drops the kept clip, which spoke
+the old wording.
 
 ### 8. Practice — `ui-screens/practice.html` (ref 2e)
 

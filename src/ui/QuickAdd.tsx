@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { addSentence, addWord } from '../journal/writes'
 import { ordinalWord } from './format'
-import type { Id, SentenceOrigin } from '../db/types'
+import type { Id } from '../db/types'
 
 /**
  * Quick add of one word or one sentence. Concepts §11.
@@ -23,7 +23,6 @@ export const QuickAdd = ({
 }) => {
   const [text, setText] = useState('')
   const [meaning, setMeaning] = useState('')
-  const [origin, setOrigin] = useState<SentenceOrigin>('encountered')
   const [note, setNote] = useState<string>()
 
   const ready = text.trim() !== ''
@@ -44,7 +43,6 @@ export const QuickAdd = ({
         notebookId,
         text,
         translation: meaning || undefined,
-        origin,
         entryId,
       })
     }
@@ -96,25 +94,6 @@ export const QuickAdd = ({
             onChange={(e) => setMeaning(e.target.value)}
           />
         </div>
-
-        {kind === 'sentence' ? (
-          <div className="field">
-            <label>Where it came from</label>
-            <div className="seg">
-              {(['encountered', 'mine', 'corrected'] as const).map((o) => (
-                <label key={o} className="seg-opt">
-                  <input
-                    type="radio"
-                    name="qa-origin"
-                    checked={origin === o}
-                    onChange={() => setOrigin(o)}
-                  />
-                  {o === 'encountered' ? 'heard' : o}
-                </label>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         <div className="dialog-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>

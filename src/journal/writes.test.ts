@@ -183,11 +183,6 @@ describe('addSentence', () => {
     expect(links[0]?.source).toBe('derived')
   })
 
-  it('defaults origin to encountered', async () => {
-    const s = await addSentence({ notebookId: nb.id, text: '오늘' }, db)
-    expect((await db.sentences.get(s))?.origin).toBe('encountered')
-  })
-
   it('keeps two records for the same line said twice', async () => {
     await addSentence({ notebookId: nb.id, text: '오늘' }, db)
     await addSentence({ notebookId: nb.id, text: '오늘' }, db)
@@ -239,28 +234,6 @@ describe('updateSentence', () => {
     await updateSentence(s, { text: '   ' }, db)
     expect((await db.sentences.get(s))?.text).toBe('오늘')
   })
-
-  it('drops correctsId when the origin stops being a correction', async () => {
-    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
-    const fix = await addSentence(
-      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
-      db,
-    )
-    await updateSentence(fix, { origin: 'mine' }, db)
-    const after = (await db.sentences.get(fix))!
-    expect(after.origin).toBe('mine')
-    expect('correctsId' in after).toBe(false)
-  })
-
-  it('keeps correctsId when only the text is edited', async () => {
-    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
-    const fix = await addSentence(
-      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
-      db,
-    )
-    await updateSentence(fix, { text: '제가 치우겠습니다' }, db)
-    expect((await db.sentences.get(fix))?.correctsId).toBe(mine)
-  })
 })
 
 describe('deleteSentence', () => {
@@ -293,18 +266,6 @@ describe('deleteSentence', () => {
     const s = await addSentence({ notebookId: nb.id, text: '오늘', entryId: e.id }, db)
     await deleteSentence(s, db)
     expect(await db.entries.get(e.id)).toBeDefined()
-  })
-
-  it('unhooks a correction that pointed at it, rather than leaving a dangling id', async () => {
-    const mine = await addSentence({ notebookId: nb.id, text: '제가 치울래요', origin: 'mine' }, db)
-    const fix = await addSentence(
-      { notebookId: nb.id, text: '제가 치울게요', origin: 'corrected', correctsId: mine },
-      db,
-    )
-    await deleteSentence(mine, db)
-    const after = (await db.sentences.get(fix))!
-    expect(after.origin).toBe('corrected')
-    expect('correctsId' in after).toBe(false)
   })
 })
 
@@ -547,9 +508,9 @@ describe('kept audio', () => {
     expect(await db.media.count()).toBe(0)
   })
 
-  it('changing only a sentence origin leaves the clip alone', async () => {
+  it('changing only a sentence translation leaves the clip alone', async () => {
     const sentenceId = await sentenceWithClip()
-    await updateSentence(sentenceId, { origin: 'mine' }, db)
+    await updateSentence(sentenceId, { translation: 'I cleared the dishes' }, db)
 
     expect((await db.sentences.get(sentenceId))?.audioMediaId).toBeDefined()
     expect(await db.media.count()).toBe(1)

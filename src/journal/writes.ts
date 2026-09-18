@@ -15,7 +15,6 @@ import type {
   ProposedSentence,
   ProposedWord,
   Sentence,
-  SentenceOrigin,
   Word,
 } from '../db/types'
 
@@ -486,17 +485,14 @@ export interface AddSentenceInput {
   text: string
   translation?: string | undefined
   note?: string | undefined
-  origin?: SentenceOrigin | undefined
-  /** On a `corrected` sentence, the `mine` one it fixes. */
-  correctsId?: Id | undefined
   entryId?: Id | undefined
 }
 
 /**
  * Adds a sentence and derives its Word links.
  *
- * Sentences are not deduplicated. The same line said on two days is two records, because origin and
- * note differ and the pair matters. Words are the deduplicated unit; sentences are evidence.
+ * Sentences are not deduplicated. The same line said on two days is two records, because the note
+ * differs and the occasion matters. Words are the deduplicated unit; sentences are evidence.
  */
 export const addSentence = async (input: AddSentenceInput, d: JournalDb = db): Promise<Id> => {
   const text = input.text.trim()
@@ -511,10 +507,8 @@ export const addSentence = async (input: AddSentenceInput, d: JournalDb = db): P
         id: newId(),
         notebookId: input.notebookId,
         text,
-        origin: input.origin ?? 'encountered',
         translation: input.translation,
         note: input.note,
-        correctsId: input.correctsId,
         createdAt: nowIso(),
       })
       await d.sentences.add(sentence)
@@ -570,7 +564,7 @@ export const deriveWordLinks = async (
  */
 export const updateSentence = async (
   sentenceId: Id,
-  patch: { text?: string; translation?: string; note?: string; origin?: SentenceOrigin },
+  patch: { text?: string; translation?: string; note?: string },
   d: JournalDb = db,
 ): Promise<void> => {
   await d.transaction('rw', [d.sentences, d.words, d.wordInSentences, d.notebooks, d.media], async () => {
@@ -586,12 +580,6 @@ export const updateSentence = async (
     if (patch.note !== undefined) {
       if (patch.note.trim() === '') delete next.note
       else next.note = patch.note.trim()
-    }
-    if (patch.origin !== undefined) {
-      next.origin = patch.origin
-      // Only a correction corrects something. Moving off that origin drops the pointer rather than
-      // leaving a sentence that claims to fix another one while calling itself the learner's own.
-      if (patch.origin !== 'corrected') delete next.correctsId
     }
 
     // Edited text makes the kept clip speak the old wording.
@@ -610,9 +598,7 @@ export const updateSentence = async (
 /**
  * Deletes a sentence, its encounters, and its word links.
  *
- * Two things go with it that are easy to miss. Any correction pointing at this sentence loses its
- * `correctsId`, because a dangling id would survive into the export bundle and `readable/` with
- * nothing on the other end. And an entry left with nothing in it gets pruned, same as `deleteWord`.
+ * An entry left with nothing in it gets pruned, same as `deleteWord`.
  */
 export const deleteSentence = async (sentenceId: Id, d: JournalDb = db): Promise<void> => {
   await d.transaction(
@@ -627,14 +613,6 @@ export const deleteSentence = async (sentenceId: Id, d: JournalDb = db): Promise
       await d.wordInSentences.bulkDelete(links.map((l) => l.id))
       await d.encounters.bulkDelete(encounters.map((e) => e.id))
       if (sentence.audioMediaId) await d.media.delete(sentence.audioMediaId)
-
-      const siblings = await d.sentences.where('notebookId').equals(sentence.notebookId).toArray()
-      for (const s of siblings) {
-        if (s.correctsId !== sentenceId) continue
-        const orphan: Sentence = { ...s }
-        delete orphan.correctsId
-        await d.sentences.put(orphan)
-      }
 
       await d.sentences.delete(sentenceId)
 
@@ -951,9 +929,6 @@ export interface AcceptProposalResult {
  *
  * Everything lands on the entry Extract ran against, not on today's, so a word pulled out of a
  * three-week-old entry shows under that entry's "Words from this entry" where it belongs.
- *
- * `correctsText` is resolved to an id after the pass that creates sentences, because a corrected
- * sentence can point at one proposed in the same batch.
  */
 export const acceptProposal = async (
   input: AcceptProposalInput,
@@ -980,28 +955,16 @@ export const acceptProposal = async (
     if (chosen) await setFamiliarity(r.wordId, chosen, d)
   }
 
-  // First pass creates every sentence and remembers the text each one came from.
-  const byText = new Map<string, Id>()
   for (const s of input.sentences) {
-    const id = await addSentence(
+    await addSentence(
       {
         notebookId: input.notebookId,
         entryId: input.entryId,
         text: s.text,
         translation: s.translation,
-        origin: s.origin,
       },
       d,
     )
-    byText.set(normalizeTerm(s.text), id)
-  }
-
-  // Second pass wires up the corrections, now that every id exists.
-  for (const s of input.sentences) {
-    if (!s.correctsText) continue
-    const self = byText.get(normalizeTerm(s.text))
-    const corrects = byText.get(normalizeTerm(s.correctsText))
-    if (self && corrects && self !== corrects) await d.sentences.update(self, { correctsId: corrects })
   }
 
   const held = await draftProposal(input.entryId, d)
