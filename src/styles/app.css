@@ -1067,6 +1067,15 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 }
 .pr-draws { font-size: 13px; }
 
+/* Adjusting what a row draws on, not a second way to start it. Text weight, sitting where a
+   secondary button would, so Start remains the only bordered thing on the row. */
+.pr-focus {
+  flex: none;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+.pr-focus:hover { color: var(--color-accent); }
+
 /* ── Reflect ────────────────────────────────────────────────────────────────
    Questions in Cormorant italic gold, answers on the ruled sheet at the same
    size as the entry body. UI guide §6. */
@@ -1121,6 +1130,71 @@ textarea.rf-input { min-height: 64px; }
   gap: var(--space-2);
 }
 
+/* ── A ticked list in a dialog ───────────────────────────────────────────────
+   Extract and the focus picker are the same interaction: a list of things with a
+   tick each, and one primary button that acts on what is ticked. The frame, the
+   rows and the tick live here under a neutral prefix; each dialog keeps its own
+   rules for what a row actually says, because a proposal is a term and a note
+   where an entry is a date and a title.
+
+   The lists scroll, the head and the actions do not. A long extraction should not
+   push its own Add button off the bottom of the screen. */
+.pick-lists {
+  overflow-y: auto;
+  min-height: 0;
+  /* Bled to the dialog edge, so a row's hover reaches the padding rather than stopping short. */
+  margin: 0 calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+}
+
+.pick-rows { display: flex; flex-direction: column; }
+
+.pick-row {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-divider);
+  cursor: pointer;
+}
+.pick-row:last-child { border-bottom: 0; }
+.pick-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+
+/* The real control, kept off screen but still focusable and still the thing that toggles. */
+.pick-box {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 14px square, gold border, accent-200 when ticked, per the UI guide. */
+.pick-tick {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  align-self: center;
+}
+.pick-tick-on { background: var(--color-accent-200); }
+.pick-box:focus-visible + .pick-tick { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.pick-empty { font-size: 14px; margin: var(--space-3) 0; }
+
+.pick-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-divider);
+  padding-top: var(--space-3);
+}
+.pick-spacer { flex: 1; }
+/* A secondary action that is available and not being pushed. Smaller than the primary beside it. */
+.pick-quiet { font-size: 13px; }
+
 /* ── Extract ────────────────────────────────────────────────────────────────
    A dialog over the entry, which stays visible behind it. Row anatomy comes
    from the mock: tick, index, term, right-aligned note on one hairline row. */
@@ -1132,50 +1206,6 @@ textarea.rf-input { min-height: 64px; }
   font-size: 13px;
   color: var(--color-neutral-700);
 }
-
-/* The lists scroll, the head and the actions do not. A long extraction should not
-   push its own Add button off the bottom of the screen. */
-.ex-lists {
-  overflow-y: auto;
-  min-height: 0;
-  margin: 0 calc(-1 * var(--space-2));
-  padding: 0 var(--space-2);
-}
-
-.ex-rows { display: flex; flex-direction: column; }
-
-.ex-row {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-divider);
-  cursor: pointer;
-}
-.ex-row:last-child { border-bottom: 0; }
-.ex-row:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
-
-/* The real control, kept off screen but still focusable and still the thing that toggles. */
-.ex-box {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-/* 14px square, gold border, accent-200 when ticked, per the UI guide. */
-.ex-tick {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  align-self: center;
-}
-.ex-tick-on { background: var(--color-accent-200); }
-.ex-box:focus-visible + .ex-tick { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
 .ex-index {
   width: 10px;
@@ -1201,18 +1231,6 @@ textarea.rf-input { min-height: 64px; }
   color: var(--color-neutral-700);
 }
 .ex-known { color: var(--color-accent-700); font-style: italic; }
-
-.ex-empty { font-size: 14px; margin: var(--space-3) 0; }
-
-.ex-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  border-top: 1px solid var(--color-divider);
-  padding-top: var(--space-3);
-}
-.ex-spacer { flex: 1; }
-.ex-quiet { font-size: 13px; }
 
 /* Discarding is available and not encouraged, so it sits under the actions in small type. */
 .ex-discard {
@@ -1281,6 +1299,45 @@ textarea.rf-input { min-height: 64px; }
   justify-content: center;
   flex-wrap: wrap;
   overflow: auto;
+}
+
+/* ── Focus picker ───────────────────────────────────────────────────────────
+   The ticked list from above with entries on top and whatever they hold
+   underneath. Only the rows are new: an entry reads as a date and a line where
+   a proposal reads as an index and a term. */
+
+.fp-dialog { width: min(560px, 100%); max-height: min(78vh, 720px); }
+.fp-hint { font-size: 13px; margin: 0; }
+
+/* Each group is a block, so ticking an entry opens its words under it rather than
+   lengthening one undifferentiated list. */
+.fp-group + .fp-group { margin-top: var(--space-4); }
+
+.fp-date {
+  flex: none;
+  width: 7.5ch;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-700);
+}
+
+/* One line of the entry, clamped. The picker is for recognising an entry, not reading it. */
+.fp-line {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp-term { flex: 1; min-width: 0; font-size: 14.5px; font-family: var(--font-target); }
+.fp-meaning {
+  flex: none;
+  max-width: 16ch;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--color-neutral-700);
 }
 
 /* ── Speak ──────────────────────────────────────────────────────────────────
@@ -1407,12 +1464,17 @@ textarea.rf-input { min-height: 64px; }
      takes a full tap target and trusts the flip-below rule to stay reachable. */
   .cap-btn { font-size: 14px; padding: var(--space-2) var(--space-3); }
 
+  /* A row of buttons that fits on a desktop dialog wraps on a phone, and the spacer
+     that pushed the primary right becomes a blank line if it is left in. */
+  .pick-actions { flex-wrap: wrap; }
+  .pick-spacer { display: none; }
+
   /* Extract stops being a dialog beside a panel and becomes one column. */
   .ex-dialog { max-height: 86vh; }
   .ex-panel { width: 100%; max-height: none; }
-  .ex-actions { flex-wrap: wrap; }
-  .ex-spacer { display: none; }
   .ex-note { max-width: 11ch; }
+
+  .fp-dialog { max-height: 86vh; }
 
   /* The sheet takes the whole width and sits above the bottom bar rather than
      under it. The dock becomes a strip of chips in the bar itself, per §6. */

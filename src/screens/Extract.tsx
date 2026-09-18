@@ -12,6 +12,7 @@ import {
 } from '../journal/proposals'
 import { acceptProposal, discardProposal, draftProposal, saveProposal } from '../journal/writes'
 import { SectionLabel } from '../ui/Shell'
+import { Tick } from '../ui/Tick'
 import { Dashes } from '../ui/Dashes'
 import { ordinalWord, plural } from '../ui/format'
 import type { Entry, Familiarity, Id, Notebook, ProposalDraft } from '../db/types'
@@ -192,11 +193,11 @@ export const Extract = ({
           </div>
         ) : busy && !split ? null : split ? (
           <>
-            <div className="ex-lists">
+            <div className="pick-lists">
               {split.words.length > 0 ? (
                 <div>
                   <SectionLabel>Words</SectionLabel>
-                  <div className="ex-rows">
+                  <div className="pick-rows">
                     {split.words.map((row, i) => (
                       <WordRowView
                         key={row.proposed.term}
@@ -214,7 +215,7 @@ export const Extract = ({
               {split.sentences.length > 0 ? (
                 <div>
                   <SectionLabel>Sentences</SectionLabel>
-                  <div className="ex-rows">
+                  <div className="pick-rows">
                     {split.sentences.map((row, i) => (
                       <SentenceRowView
                         key={row.proposed.text}
@@ -231,18 +232,18 @@ export const Extract = ({
               ) : null}
 
               {split.words.length === 0 && split.sentences.length === 0 ? (
-                <p className="text-muted ex-empty">
+                <p className="text-muted pick-empty">
                   Nothing new in this one. Everything it holds is already in the notebook.
                 </p>
               ) : null}
             </div>
 
-            <div className="ex-actions">
+            <div className="pick-actions">
               <button className="btn btn-ghost" onClick={notNow} disabled={busy}>
                 Not now
               </button>
-              <span className="ex-spacer" />
-              <button className="btn btn-ghost ex-quiet" onClick={() => void again()} disabled={busy}>
+              <span className="pick-spacer" />
+              <button className="btn btn-ghost pick-quiet" onClick={() => void again()} disabled={busy}>
                 Look again
               </button>
               <button
@@ -309,8 +310,6 @@ const extract = async (notebook: Notebook, entry: Entry): Promise<ProposalDraft>
 
 /* ── rows ─────────────────────────────────────────────────────────────────── */
 
-const Tick = ({ on }: { on: boolean }) => <span className={on ? 'ex-tick ex-tick-on' : 'ex-tick'} />
-
 const WordRowView = ({
   row,
   index,
@@ -324,9 +323,8 @@ const WordRowView = ({
   on: boolean
   onToggle: () => void
 }) => (
-  <label className="ex-row">
-    <input type="checkbox" className="ex-box" checked={on} onChange={onToggle} />
-    <Tick on={on} />
+  <label className="pick-row">
+    <Tick on={on} onToggle={onToggle} />
     <span className="ex-index">{index}</span>
     <span className="ex-term">{edit?.term ?? row.proposed.term}</span>
     <span className="ex-note">
@@ -371,9 +369,8 @@ const SentenceRowView = ({
   on: boolean
   onToggle: () => void
 }) => (
-  <label className="ex-row">
-    <input type="checkbox" className="ex-box" checked={on} onChange={onToggle} />
-    <Tick on={on} />
+  <label className="pick-row">
+    <Tick on={on} onToggle={onToggle} />
     <span className="ex-index">{index}</span>
     <span className="ex-term">{row.proposed.text}</span>
     <span className="ex-note">{row.proposed.translation ?? ''}</span>
