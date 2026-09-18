@@ -10,6 +10,7 @@ import { Practice } from './screens/Practice'
 import { Settings } from './screens/Settings'
 import { Sandbox } from './screens/Sandbox'
 import { WorkbookLayer } from './ui/WorkbookLayer'
+import { Receipt } from './ui/Receipt'
 
 /**
  * Routes. Technical plan §6.
@@ -24,6 +25,10 @@ import { WorkbookLayer } from './ui/WorkbookLayer'
  * `<WorkbookLayer>` sits outside `<Routes>` on purpose. That is what lets the sheet appear over the
  * current screen without unmounting it, which is the entire mechanic in §7: minimize and the journal is
  * still exactly where it was, because it never went anywhere.
+ *
+ * `<Receipt>` sits out here for the same reason and one more. Inside `Shell` it would remount with the
+ * screen, so a capture that navigated would take its own confirmation with it, and it would draw under
+ * the sheet rather than over it.
  */
 export const App = () => (
   <BrowserRouter>
@@ -44,5 +49,6 @@ export const App = () => (
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     <WorkbookLayer />
+    <Receipt />
   </BrowserRouter>
 )

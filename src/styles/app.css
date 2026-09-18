@@ -991,8 +991,9 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 .sup-btn { font-size: 12px; padding-left: 0; color: var(--color-neutral-700); }
 .sup-btn:hover:not(:disabled) { color: var(--color-accent); }
 
-/* One chip per docked session, at the foot of the rail. No progress bar, no
-   timer, no count. A book left face down on the desk. */
+/* One lit glyph at the foot of the rail when an exercise is waiting. No name, no
+   label, no count. A book left face down on the desk. The gold is the whole
+   signal, and the practice row is where the sentence about it lives. */
 .rail-dock {
   display: flex;
   flex-direction: column;
@@ -1000,49 +1001,8 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
   align-items: center;
 }
 
-.dock-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  width: 52px;
-  padding: 6px 2px;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--color-divider);
-  border-left: 2px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  color: var(--color-neutral-800);
-  font: inherit;
-  overflow: hidden;
-}
-.dock-chip:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
-
-/* The workbook's own glyph. Sits above the name, and on mobile it is the only thing left that says
-   which exercise this is, since the label is hidden at 44px. */
-.dock-chip-icon {
-  display: flex;
-  color: var(--color-neutral-700);
-  margin-bottom: 1px;
-}
-
-.dock-chip-name {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 10px;
-  line-height: 1.1;
-  text-align: center;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dock-chip-label {
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-neutral-700);
-  white-space: nowrap;
-}
+.dock-mark { color: var(--color-accent); }
+.dock-mark:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 
 /* ── Practice ───────────────────────────────────────────────────────────────
    A contents page. Rows separated by hairlines, each naming what it draws from
@@ -1682,12 +1642,34 @@ textarea.ds-input { min-height: 88px; }
   background: var(--color-divider);
 }
 
-/* What just happened. A readout, not a confirmation — the write already landed. */
-.cap-note {
+/* ── Receipt ────────────────────────────────────────────────────────────────
+   What just happened, top right under the kicker. A readout, not a confirmation:
+   the write already landed. Same hairline-and-ground treatment as the chip it
+   used to live inside, which is the point — it reads as the same voice, moved
+   somewhere the selection cannot reach it. */
+
+/* The live region. Always mounted, usually empty, and never in the way of a press. */
+.receipt-live {
+  position: fixed;
+  /* Clears the kicker's 44px strip. Right margin matches what `kicker-actions` keeps. */
+  top: 56px;
+  right: 28px;
+  /* Over `.wb-sheet`'s 30: captures happen inside workbook output. */
+  z-index: 40;
+  pointer-events: none;
+}
+
+.receipt {
+  display: inline-block;
+  padding: 3px var(--space-2);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   font-size: 12.5px;
   font-style: italic;
   color: var(--color-accent-700);
-  padding: 3px var(--space-2);
+  white-space: nowrap;
 }
 
 /* ── Mobile ────────────────────────────────────────────────────────────────
@@ -1755,6 +1737,9 @@ textarea.ds-input { min-height: 88px; }
      takes a full tap target and trusts the flip-below rule to stay reachable. */
   .cap-btn { font-size: 14px; padding: var(--space-2) var(--space-3); }
 
+  /* Tracks the kicker's narrower padding, so the receipt stays on its margin. */
+  .receipt-live { right: 18px; }
+
   /* A row of buttons that fits on a desktop dialog wraps on a phone, and the spacer
      that pushed the primary right becomes a blank line if it is left in. */
   .pick-actions { flex-wrap: wrap; }
@@ -1768,7 +1753,7 @@ textarea.ds-input { min-height: 88px; }
   .fp-dialog { max-height: 86vh; }
 
   /* The sheet takes the whole width and sits above the bottom bar rather than
-     under it. The dock becomes a strip of chips in the bar itself, per §6. */
+     under it. The dock becomes the last cell of the bar itself, per §6. */
   .wb-sheet {
     width: 100%;
     inset: auto 0 60px 0;
@@ -1779,7 +1764,7 @@ textarea.ds-input { min-height: 88px; }
   .wb-body { padding: var(--space-4); }
   .wb-term { font-size: 22px; }
 
-  .rail-dock { flex-direction: row; }
-  .dock-chip { width: 44px; padding: 3px 2px; }
-  .dock-chip-label { display: none; }
+  /* Hairline and mark turn to sit side by side, matching how `rail-sep` already
+     stands on its side between the way back and the screen's tools. */
+  .rail-dock { flex-direction: row; align-items: center; }
 }

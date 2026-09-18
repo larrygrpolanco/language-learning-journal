@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { addSentence, addWord } from '../journal/writes'
 import { ordinalWord } from './format'
+import { say } from './receipts'
 import type { Id } from '../db/types'
 
 /**
  * Highlight to capture. Technical plan §11.
  *
  * Wraps any prose a word might get pulled out of. Select some of it and a chip floats over the
- * selection with two text buttons, `word` and `sentence`. Pressing one writes it and nothing else
- * happens: no dialog, no confirmation, meaning left empty to fill in later or never.
+ * selection with two text buttons, `word` and `sentence`. Pressing one writes it and gets out of the
+ * way: no dialog, nothing to dismiss, meaning left empty to fill in later or never. A line goes to
+ * the receipt saying what landed, and that is the whole of the feedback.
  *
  * Render sites are entry bodies, pasted text attachments, and workbook output. Deliberately not the
  * composer, whose body is a `<textarea>`: `window.getSelection()` returns no range inside a form
@@ -40,19 +42,12 @@ interface Chip {
 /** Chip height plus a little air. Also the threshold for flipping it below the selection. */
 const CHIP_CLEARANCE = 42
 
-/** How long the chip holds its result before it goes. Long enough to read, short enough to ignore. */
-const NOTE_MS = 1600
-
 export const Capturable = ({ notebookId, entryId, className, children }: CapturableProps) => {
   const hostRef = useRef<HTMLDivElement>(null)
   const chipRef = useRef<HTMLDivElement>(null)
   const [chip, setChip] = useState<Chip>()
-  const [note, setNote] = useState<string>()
 
-  const hide = useCallback(() => {
-    setChip(undefined)
-    setNote(undefined)
-  }, [])
+  const hide = useCallback(() => setChip(undefined), [])
 
   /**
    * Reads the live selection and places the chip, or hides it.
@@ -86,7 +81,6 @@ export const Capturable = ({ notebookId, entryId, className, children }: Captura
 
     const rect = range.getBoundingClientRect()
     const below = rect.top < CHIP_CLEARANCE
-    setNote(undefined)
     setChip({
       text,
       left: rect.left + rect.width / 2,
@@ -149,22 +143,26 @@ export const Capturable = ({ notebookId, entryId, className, children }: Captura
   }, [read, hide])
 
   /**
-   * Writes the capture, then says what happened and goes.
+   * Writes the capture, publishes the line and goes.
    *
    * The line is a readout, not a confirmation: the write already happened. It exists because a word
    * you have met ten times before is worth knowing about, and it is the same line quick add shows.
+   *
+   * It goes to the receipt rather than onto the chip. The chip cannot hold it: clearing the selection
+   * fires `selectionchange`, which hides the chip a moment later, so a line rendered here lasted about
+   * 180ms and an incidental scroll wiped it too. Off the chip, none of that can reach it.
    */
   const capture = async (kind: 'word' | 'sentence') => {
     if (!chip) return
+    hide()
+    window.getSelection()?.removeAllRanges()
     if (kind === 'word') {
       const r = await addWord({ notebookId, term: chip.text, entryId })
-      setNote(r.created ? 'word added' : `already here · ${ordinalWord(r.timesEncountered)} time`)
+      say(r.created ? 'word added' : `already here · ${ordinalWord(r.timesEncountered)} time`)
     } else {
       await addSentence({ notebookId, text: chip.text, entryId })
-      setNote('sentence added')
+      say('sentence added')
     }
-    window.getSelection()?.removeAllRanges()
-    window.setTimeout(hide, NOTE_MS)
   }
 
   return (
@@ -181,23 +179,17 @@ export const Capturable = ({ notebookId, entryId, className, children }: Captura
           role="group"
           aria-label="Capture the selected text"
         >
-          {note ? (
-            <span className="cap-note">{note}</span>
-          ) : (
-            <>
-              <button type="button" className="btn btn-ghost cap-btn" onClick={() => void capture('word')}>
-                word
-              </button>
-              <span className="cap-sep" />
-              <button
-                type="button"
-                className="btn btn-ghost cap-btn"
-                onClick={() => void capture('sentence')}
-              >
-                sentence
-              </button>
-            </>
-          )}
+          <button type="button" className="btn btn-ghost cap-btn" onClick={() => void capture('word')}>
+            word
+          </button>
+          <span className="cap-sep" />
+          <button
+            type="button"
+            className="btn btn-ghost cap-btn"
+            onClick={() => void capture('sentence')}
+          >
+            sentence
+          </button>
         </div>
       ) : null}
     </>

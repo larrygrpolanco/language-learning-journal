@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { BookOpen, ChevronLeft, Library, NotebookTabs, Quote, Type } from 'lucide-react'
+import { BookOpen, ChevronLeft, Library, Quote, Type } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
 import { Dock } from './Dock'
+import { NotebookTabsPlain } from './icons'
 import type { Id } from '../db/types'
 
 /**
@@ -150,7 +151,7 @@ export const SectionRail = ({ nb }: { nb: Id }) => (
       <Quote size={17} />
     </RailLink>
     <RailLink to={`/n/${nb}/practice`} label="Practice">
-      <NotebookTabs size={17} />
+      <NotebookTabsPlain size={17} />
     </RailLink>
   </>
 )

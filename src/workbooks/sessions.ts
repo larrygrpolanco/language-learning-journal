@@ -10,15 +10,34 @@ import type { Id, WorkbookScope, WorkbookSession } from '../db/types'
  * The mechanic in one line: `state` is opaque JSON the workbook hands over and gets back. There is no
  * suspend path and no serialisation protocol. Because it lands in IndexedDB rather than memory, a
  * session survives a reload, a browser restart and closing the laptop, on the same code path.
+ *
+ * A notebook holds at most one session. Not one expanded and any number docked: one. That is what makes
+ * the rail mark a single lit glyph rather than a shelf, and it is enforced here rather than in the UI so
+ * it holds however a session was started, including from a link.
  */
 
-/** Sessions in this notebook that are waiting in the dock, oldest first so chips do not reshuffle. */
-export const dockedSessions = async (
+/**
+ * This notebook's session, whatever its status. What the practice page reads to know one is going.
+ *
+ * Singular because of the invariant above. Newest by `touchedAt` if a notebook somehow holds more than
+ * one, which only rows written before the invariant existed can be: the next `openSession` in that
+ * notebook clears them, so the app heals rather than needing a migration.
+ */
+export const notebookSession = async (
   notebookId: Id,
   d: JournalDb = db,
-): Promise<WorkbookSession[]> => {
+): Promise<WorkbookSession | undefined> => {
   const rows = await d.sessions.where('notebookId').equals(notebookId).toArray()
-  return rows.filter((s) => s.status === 'docked').sort((a, b) => (a.openedAt < b.openedAt ? -1 : 1))
+  return rows.sort((a, b) => (a.touchedAt > b.touchedAt ? -1 : 1))[0]
+}
+
+/** The same session, given it is waiting in the dock. What lights the rail mark. */
+export const dockedSession = async (
+  notebookId: Id,
+  d: JournalDb = db,
+): Promise<WorkbookSession | undefined> => {
+  const s = await notebookSession(notebookId, d)
+  return s?.status === 'docked' ? s : undefined
 }
 
 export const getSession = async (
@@ -35,17 +54,18 @@ export interface OpenSessionInput {
 }
 
 /**
- * Starts a session, docking any that was expanded.
+ * Starts a session, ending whatever this notebook was holding.
  *
- * §7: opening a second workbook while one is expanded docks the first, with no prompt. Doing that here
- * rather than in the UI means it holds however the session was started, including from a link.
+ * One session per notebook, and this is what guarantees it: the clear and the add are one transaction,
+ * so two presses in the same tick cannot leave two rows behind. The *decision* to end the previous one
+ * belongs to the UI, which is where the dialog is. This only guarantees the shape.
  *
  * The scope is stored once, at open, and never revised. It carries resolved word and sentence ids, so
  * an exercise cannot silently gain material because one of its entries was edited while it sat docked.
  */
 export const openSession = async (input: OpenSessionInput, d: JournalDb = db): Promise<Id> =>
   d.transaction('rw', [d.sessions], async () => {
-    await dockOthers(input.notebookId, undefined, d)
+    await clearAll(input.notebookId, d)
 
     const at = nowIso()
     const session: WorkbookSession = {
@@ -63,14 +83,14 @@ export const openSession = async (input: OpenSessionInput, d: JournalDb = db): P
     return session.id
   })
 
-/** Brings a docked session back, docking whatever was expanded. */
+/**
+ * Brings the docked session back.
+ *
+ * A status flip and nothing more. There is never another session in the notebook to dock first, which
+ * is the point of the invariant above.
+ */
 export const expandSession = async (sessionId: Id, d: JournalDb = db): Promise<void> => {
-  await d.transaction('rw', [d.sessions], async () => {
-    const session = await d.sessions.get(sessionId)
-    if (!session) return
-    await dockOthers(session.notebookId, sessionId, d)
-    await d.sessions.update(sessionId, { status: 'open', touchedAt: nowIso() })
-  })
+  await d.sessions.update(sessionId, { status: 'open', touchedAt: nowIso() })
 }
 
 /**
@@ -117,14 +137,13 @@ export const closeSession = async (sessionId: Id, d: JournalDb = db): Promise<vo
 }
 
 /**
- * Docks every open session in the notebook except one.
+ * Ends every session in the notebook.
  *
- * At most one session is expanded (§7). This is what enforces it, and it runs inside its caller's
- * transaction so two presses in the same tick cannot leave two open.
+ * Runs inside its caller's transaction, which is what makes the one-per-notebook invariant hold when
+ * two presses land in the same tick. A delete rather than a status change, for the same reason closing
+ * is: §7 says an ended session saves nothing, so there is nothing to keep a row for.
  */
-const dockOthers = async (notebookId: Id, keep: Id | undefined, d: JournalDb): Promise<void> => {
-  const open = (await d.sessions.where('notebookId').equals(notebookId).toArray()).filter(
-    (s) => s.status === 'open' && s.id !== keep,
-  )
-  for (const s of open) await d.sessions.update(s.id, { status: 'docked', touchedAt: nowIso() })
+const clearAll = async (notebookId: Id, d: JournalDb): Promise<void> => {
+  const rows = await d.sessions.where('notebookId').equals(notebookId).toArray()
+  for (const s of rows) await d.sessions.delete(s.id)
 }

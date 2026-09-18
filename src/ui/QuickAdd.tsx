@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { addSentence, addWord } from '../journal/writes'
 import { ordinalWord } from './format'
+import { say } from './receipts'
 import type { Id } from '../db/types'
 
 /**
@@ -9,6 +10,10 @@ import type { Id } from '../db/types'
  * The only required field is the text itself. Everything else can be filled in later or never, which
  * is what keeps capture cheap enough to actually happen. Given an `entryId` it links there, otherwise
  * it links to today's entry, creating it if needed.
+ *
+ * The receipt speaks when the surface goes away. A new word closes the dialog and publishes a line,
+ * which is the only thing that then says it worked. A re-encounter keeps the dialog open and its own
+ * `qa-note`, and publishes nothing, because a receipt behind a live dialog is worse than none.
  */
 export const QuickAdd = ({
   notebookId,
@@ -38,6 +43,7 @@ export const QuickAdd = ({
         setMeaning('')
         return
       }
+      say('word added')
     } else {
       await addSentence({
         notebookId,
@@ -45,6 +51,7 @@ export const QuickAdd = ({
         translation: meaning || undefined,
         entryId,
       })
+      say('sentence added')
     }
     onClose()
   }

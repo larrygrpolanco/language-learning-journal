@@ -3,9 +3,10 @@ import { JournalDb } from '../db/db'
 import {
   closeSession,
   dockSession,
-  dockedSessions,
+  dockedSession,
   expandSession,
   getSession,
+  notebookSession,
   openSession,
   saveSessionState,
   setSessionLabel,
@@ -128,49 +129,65 @@ describe('the focus scope', () => {
   })
 })
 
-describe('at most one expanded', () => {
-  it('docks the open session when a second is started', async () => {
+describe('at most one session', () => {
+  it('ends the previous one when a second is started', async () => {
     const first = await start('first')
     const second = await start('second')
 
-    expect((await getSession(first, d))?.status).toBe('docked')
+    // A delete, not a demotion. §7 saves nothing from an ended session, so there is no row to keep.
+    expect(await getSession(first, d)).toBeUndefined()
     expect((await getSession(second, d))?.status).toBe('open')
+    expect(await d.sessions.count()).toBe(1)
   })
 
-  it('docks the open session when a docked one is restored', async () => {
+  it('ends a docked one too, not just the expanded one', async () => {
     const first = await start('first')
     await dockSession(first, { at: 1 }, d)
     const second = await start('second')
 
-    await expandSession(first, d)
+    expect(await getSession(first, d)).toBeUndefined()
+    expect((await notebookSession('nb', d))?.id).toBe(second)
+  })
 
-    expect((await getSession(first, d))?.status).toBe('open')
-    expect((await getSession(second, d))?.status).toBe('docked')
+  it('restores a docked session by flipping its status, touching nothing else', async () => {
+    const id = await start('first')
+    await dockSession(id, { at: 1 }, d)
+
+    await expandSession(id, d)
+
+    const back = await getSession(id, d)
+    expect(back?.status).toBe('open')
     // Restoring must not disturb the state it is restoring.
-    expect((await getSession(first, d))?.state).toEqual({ at: 1 })
+    expect(back?.state).toEqual({ at: 1 })
+    expect(await d.sessions.count()).toBe(1)
   })
 
   it('does not touch a session in another notebook', async () => {
     const mine = await start('mine', { notebookId: 'nb-a' })
     await start('theirs', { notebookId: 'nb-b' })
 
-    // The notebook is the boundary, so opening one elsewhere leaves this one expanded.
+    // The notebook is the boundary, so opening one elsewhere leaves this one alone. Now that opening
+    // deletes rather than demotes, getting this wrong would destroy the other notebook's exercise.
     expect((await getSession(mine, d))?.status).toBe('open')
+    expect(await d.sessions.count()).toBe(2)
   })
 })
 
 describe('the dock', () => {
-  it('lists only docked sessions for this notebook, oldest first', async () => {
-    const a = await start('a')
-    await dockSession(a, undefined, d)
-    const b = await start('b')
-    await dockSession(b, undefined, d)
-    const stillOpen = await start('still open')
+  it('reads this notebook, and only when its session is docked', async () => {
+    const id = await start('a')
+    await dockSession(id, undefined, d)
     await start('elsewhere', { notebookId: 'other' })
 
-    const chips = await dockedSessions('nb', d)
-    expect(chips.map((s) => s.label)).toEqual(['a', 'b'])
-    expect(chips.some((s) => s.id === stillOpen)).toBe(false)
+    expect((await dockedSession('nb', d))?.id).toBe(id)
+  })
+
+  it('is empty while the session is expanded, so the mark is never lit beside its own sheet', async () => {
+    const id = await start('still open')
+
+    expect(await dockedSession('nb', d)).toBeUndefined()
+    // The session is still there. It is just not in the dock.
+    expect((await notebookSession('nb', d))?.id).toBe(id)
   })
 
   it('reads the label the workbook set', async () => {
@@ -178,7 +195,7 @@ describe('the dock', () => {
     await setSessionLabel(id, '3 of 8', d)
     await dockSession(id, undefined, d)
 
-    expect((await dockedSessions('nb', d))[0]?.label).toBe('3 of 8')
+    expect((await dockedSession('nb', d))?.label).toBe('3 of 8')
   })
 
   it('drops a closed session entirely, since closing saves nothing', async () => {
@@ -187,6 +204,7 @@ describe('the dock', () => {
     await closeSession(id, d)
 
     expect(await getSession(id, d)).toBeUndefined()
-    expect(await dockedSessions('nb', d)).toEqual([])
+    expect(await dockedSession('nb', d)).toBeUndefined()
+    expect(await notebookSession('nb', d)).toBeUndefined()
   })
 })
