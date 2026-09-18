@@ -151,6 +151,15 @@ export const Timeline = () => {
 }
 
 /**
+ * How many word tags a row shows before the rest become a count.
+ *
+ * A productive entry can yield twenty words, and twenty tags stop being a summary of the entry and
+ * become a wall in front of it. Five is enough to recognise what the entry was about, which is all
+ * this row is for; the count that follows behaves like the sentence count beside it.
+ */
+const WORDS_SHOWN = 5
+
+/**
  * One entry in the column.
  *
  * An entry whose attachment is the point shows a plate beside the text instead of tags, per the UI
@@ -188,11 +197,17 @@ const TimelineEntry = ({
 
       {plateIsThePoint ? null : (
         <div className="tl-tags">
-          {row.words.map((w) => (
+          {row.words.slice(0, WORDS_SHOWN).map((w) => (
             <Link key={w.id} to={`/n/${nb}/words/${w.id}`} className="tag tag-outline">
               {w.term}
             </Link>
           ))}
+          {row.words.length > WORDS_SHOWN ? (
+            // The rest are in the entry, listed under its body, which is where they read in context.
+            <Link to={`/n/${nb}/e/${row.entry.id}`} className="tag tag-neutral">
+              {plural(row.words.length - WORDS_SHOWN, 'more word', 'more words')}
+            </Link>
+          ) : null}
           {row.sentences > 0 ? (
             // Scoped to this entry, so the count leads to the sentences it is counting.
             <Link to={`/n/${nb}/sentences?entry=${row.entry.id}`} className="tag tag-neutral">

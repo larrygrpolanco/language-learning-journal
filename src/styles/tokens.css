@@ -87,6 +87,9 @@
      line-height matched to the spacing so text sits on the line. */
   --rule-height: 32px;
   --rule-ink: rgba(32, 31, 29, 0.09);
+
+  /* How wide body copy runs. Wider than a book page so a wide screen is not half empty. */
+  --measure: 56em;
 }
 
 *,

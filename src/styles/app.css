@@ -90,9 +90,9 @@
   min-width: 0;
 }
 
-/* Body copy holds a 58–62 character measure, justified with hyphenation. */
+/* Body copy holds the measure, justified with hyphenation. */
 .measure {
-  max-width: 34em;
+  max-width: var(--measure);
   text-align: justify;
   hyphens: auto;
 }
@@ -359,7 +359,7 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
   line-height: 1.75;
   text-align: justify;
   hyphens: auto;
-  max-width: 34em;
+  max-width: var(--measure);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -474,6 +474,7 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 .cp-saved { font-size: 12px; }
 
 .cp-head {
+  max-width: var(--measure);
   display: flex;
   gap: var(--space-4);
   align-items: baseline;
@@ -493,7 +494,7 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 
 .cp-body {
   min-height: 230px;
-  max-width: 34em;
+  max-width: var(--measure);
 }
 
 .cp-attachments {
@@ -1483,6 +1484,39 @@ textarea.ds-input { min-height: 88px; }
 }
 .ex-known { color: var(--color-accent-700); font-style: italic; }
 
+/* ── Extract's size question ────────────────────────────────────────────────
+   The two amounts are the only things on screen before a call is made, so they
+   are the press rather than a setting with a Go beside it. Side by side on a
+   wide dialog, stacked when there is no room for two. */
+.ex-ask {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+
+.ex-pick {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  color: inherit;
+  font: inherit;
+}
+.ex-pick:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+}
+.ex-pick:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.ex-pick-name { font-family: var(--font-heading); font-size: 14.5px; }
+.ex-pick-hint { font-size: 12px; color: var(--color-neutral-700); }
+
 /* Discarding is available and not encouraged, so it sits under the actions in small type. */
 .ex-discard {
   align-self: flex-start;
@@ -1749,6 +1783,7 @@ textarea.ds-input { min-height: 88px; }
   .ex-dialog { max-height: 86vh; }
   .ex-panel { width: 100%; max-height: none; }
   .ex-note { max-width: 11ch; }
+  .ex-ask { flex-direction: column; }
 
   .fp-dialog { max-height: 86vh; }
 

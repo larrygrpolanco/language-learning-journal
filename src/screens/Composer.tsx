@@ -236,6 +236,20 @@ export const Composer = () => {
         >
           + attach
         </button>
+        <button
+          type="button"
+          className="btn btn-secondary cp-attach"
+          onClick={() => setAdding('word')}
+        >
+          + word
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary cp-attach"
+          onClick={() => setAdding('sentence')}
+        >
+          + sentence
+        </button>
         <input
           ref={fileInput}
           type="file"

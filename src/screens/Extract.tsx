@@ -3,14 +3,14 @@ import { db } from '../db/db'
 import { extractFromEntry, type ExtractMode } from '../ai/extract'
 import { failureLine } from '../ai/client'
 import {
-  mergeDrafts,
   rowsWorthShowing,
   splitProposals,
   type SentenceRow,
   type Split,
   type WordRow,
 } from '../journal/proposals'
-import { acceptProposal, discardProposal, draftProposal, saveProposal } from '../journal/writes'
+import { asDraft, runExtraction, runningExtraction } from '../journal/extracting'
+import { acceptProposal, discardProposal, draftProposal } from '../journal/writes'
 import { SectionLabel } from '../ui/Shell'
 import { Tick } from '../ui/Tick'
 import { Dashes } from '../ui/Dashes'
@@ -22,6 +22,16 @@ import type { Entry, Familiarity, Id, Notebook, ProposalDraft } from '../db/type
  *
  * A dialog over the entry, which stays visible behind it. Everything arrives pre-ticked so accepting
  * is one press, and `Edit each` opens the per-item panel for the cases worth a second of attention.
+ *
+ * Two states, and which one shows is decided by what the entry already holds. A fresh entry opens on
+ * the size question, because a call that starts before the learner has said anything is a call they
+ * may not have wanted. An entry with a draft, or with a call still running from a dialog that was
+ * closed, opens on the list. `Look again` returns to the question, which is what makes "it only found
+ * nine, ask for everything" a path rather than a setting to discover.
+ *
+ * The two amounts are buttons rather than a picker with a Go beside it. A setting sitting in a row of
+ * verbs was the confusing arrangement this replaced: it changed nothing until a second control was
+ * pressed, and the row ended up carrying six things. Only `Add` is a filled button now.
  *
  * A note on the design reference. The mock draws this as a 302px panel pinned to the top right with
  * the proposed terms underlined and numbered inside the entry body. The guide's prose describes a
@@ -45,9 +55,9 @@ export const Extract = ({
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(true)
 
-  // Governs both words and sentences alike. Changing it takes effect on the next `Look again`,
-  // same as any other setting here: nothing is re-sent until the learner asks for it.
-  const [mode, setMode] = useState<ExtractMode>('focused')
+  // Whether the size question is on screen. It is the first thing a fresh entry shows, and where
+  // `Look again` goes back to, so the amount is always chosen rather than assumed.
+  const [asking, setAsking] = useState(false)
 
   // Ticked by term and by sentence text, both pre-filled. A Set of keys rather than a flag per row,
   // so the per-item panel and the list cannot disagree about what is on.
@@ -66,25 +76,23 @@ export const Extract = ({
       setBusy(true)
       setError(undefined)
       try {
-        const held = await draftProposal(entry.id)
-        const previous: ProposalDraft | undefined = held
-          ? { entryId: held.entryId, words: held.words, sentences: held.sentences }
-          : undefined
+        // A call still running for this entry wins over anything on the record: attaching to it is
+        // what makes reopening Extract resume rather than restart. Otherwise a draft already on the
+        // entry is shown as it stands rather than spending a call to regenerate it.
+        const inFlight = runningExtraction(entry.id)
+        const draft = inFlight ? await inFlight : asDraft(await draftProposal(entry.id))
 
-        // A draft already on the entry is shown as it stands rather than spending a call to
-        // regenerate it. Re-extracting is a separate press, and the mode picker only appears once
-        // there is something on screen, so the first pass always runs `focused`.
-        const draft = previous ?? (await extract(notebook, entry, 'focused'))
-        if (!live) return
+        // Nothing held and nothing running. Ask how much to pull rather than spending a call on a
+        // guess, which is the one press that used to happen before the learner could say anything.
+        if (!draft) {
+          if (live) {
+            setAsking(true)
+            setBusy(false)
+          }
+          return
+        }
 
-        if (!previous) await saveProposal(notebook.id, draft)
-
-        const words = await db.words.where('notebookId').equals(notebook.id).toArray()
-        const encounters = await db.encounters.where('entryId').equals(entry.id).toArray()
-        const resolved = rowsWorthShowing(
-          splitProposals(draft, words),
-          new Set(encounters.map((e) => e.targetId)),
-        )
+        const resolved = await resolveRows(notebook.id, entry.id, draft)
         if (!live) return
 
         setSplit(resolved)
@@ -103,31 +111,30 @@ export const Extract = ({
     }
   }, [notebook, entry])
 
-  /** Re-extract. Merges into the held draft, so an edited field is never rewritten. */
-  const again = async () => {
+  /**
+   * The answer to the size question, which is also what starts the call.
+   *
+   * One press rather than a setting plus a trigger: picking the amount is the only way a call is
+   * ever made here. A second pass merges into the held draft, so an edited field is never rewritten.
+   */
+  const choose = async (mode: ExtractMode) => {
+    setAsking(false)
     setBusy(true)
     setError(undefined)
     try {
-      const held = await draftProposal(entry.id)
-      const previous: ProposalDraft | undefined = held
-        ? { entryId: held.entryId, words: held.words, sentences: held.sentences }
-        : undefined
-
-      const merged = mergeDrafts(previous, await extract(notebook, entry, mode))
-      await saveProposal(notebook.id, merged)
-
-      const words = await db.words.where('notebookId').equals(notebook.id).toArray()
-      const encounters = await db.encounters.where('entryId').equals(entry.id).toArray()
-      const resolved = rowsWorthShowing(
-        splitProposals(merged, words),
-        new Set(encounters.map((e) => e.targetId)),
+      const merged = await runExtraction(notebook.id, entry.id, () =>
+        extract(notebook, entry, mode),
       )
+      const resolved = await resolveRows(notebook.id, entry.id, merged)
 
       setSplit(resolved)
       setTickedWords(new Set(resolved.words.map((r) => r.proposed.term)))
       setTickedSentences(new Set(resolved.sentences.map((r) => r.proposed.text)))
     } catch (e) {
+      // Back to the question rather than an error with nothing under it. A call that failed is the
+      // case most likely to be worth pressing again, so the way to press again has to still be there.
       setError(failureLine(e))
+      setAsking(true)
     } finally {
       setBusy(false)
     }
@@ -185,7 +192,9 @@ export const Extract = ({
       >
         <div>
           <h2 className="dialog-title">Extract from this entry</h2>
-          <p className="ex-count">{countLine(busy, split, total, done)}</p>
+          <p className="ex-count">
+            {asking ? 'How much should it pull?' : countLine(busy, split, total, done)}
+          </p>
         </div>
 
         {error ? <p className="st-error">{error}</p> : null}
@@ -196,6 +205,39 @@ export const Extract = ({
               Done
             </button>
           </div>
+        ) : asking ? (
+          <>
+            <div className="ex-ask">
+              <button className="ex-pick" onClick={() => void choose('focused')}>
+                <span className="ex-pick-name">Just a handful</span>
+                <span className="ex-pick-hint">The few most worth keeping.</span>
+              </button>
+              <button className="ex-pick" onClick={() => void choose('exhaustive')}>
+                <span className="ex-pick-name">Everything</span>
+                <span className="ex-pick-hint">
+                  Every word and every full line of {notebook.language}.
+                </span>
+              </button>
+            </div>
+
+            <div className="pick-actions">
+              <button className="btn btn-ghost" onClick={notNow}>
+                Not now
+              </button>
+              {split ? (
+                <>
+                  <span className="pick-spacer" />
+                  {/* Only reachable from `Look again`, and only then is there a list to go back to. */}
+                  <button
+                    className="btn btn-ghost pick-quiet"
+                    onClick={() => setAsking(false)}
+                  >
+                    Back to the list
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </>
         ) : busy && !split ? null : split ? (
           <>
             <div className="pick-lists">
@@ -248,33 +290,15 @@ export const Extract = ({
                 Not now
               </button>
               <span className="pick-spacer" />
-              <div className="seg ex-mode" title="How much Look again should pull">
-                <label className="seg-opt">
-                  <input
-                    type="radio"
-                    name="ex-mode"
-                    checked={mode === 'focused'}
-                    onChange={() => setMode('focused')}
-                    disabled={busy}
-                  />
-                  Handful
-                </label>
-                <label className="seg-opt">
-                  <input
-                    type="radio"
-                    name="ex-mode"
-                    checked={mode === 'exhaustive'}
-                    onChange={() => setMode('exhaustive')}
-                    disabled={busy}
-                  />
-                  Exhaustive
-                </label>
-              </div>
-              <button className="btn btn-ghost pick-quiet" onClick={() => void again()} disabled={busy}>
+              <button
+                className="btn btn-ghost pick-quiet"
+                onClick={() => setAsking(true)}
+                disabled={busy}
+              >
                 Look again
               </button>
               <button
-                className="btn btn-secondary"
+                className="btn btn-ghost pick-quiet"
                 disabled={busy || chosenWords.length === 0}
                 onClick={() => setEditingAt(0)}
               >
@@ -286,7 +310,11 @@ export const Extract = ({
             </div>
 
             {split.words.length > 0 || split.sentences.length > 0 ? (
-              <button className="btn btn-ghost ex-discard" onClick={() => void discard()}>
+              <button
+                className="btn btn-ghost ex-discard"
+                disabled={busy}
+                onClick={() => void discard()}
+              >
                 Throw this suggestion away
               </button>
             ) : null}
@@ -309,6 +337,16 @@ export const Extract = ({
 }
 
 /* ── the call ─────────────────────────────────────────────────────────────── */
+
+/** A draft resolved against the notebook, down to the rows worth putting on screen. */
+const resolveRows = async (notebookId: Id, entryId: Id, draft: ProposalDraft): Promise<Split> => {
+  const words = await db.words.where('notebookId').equals(notebookId).toArray()
+  const encounters = await db.encounters.where('entryId').equals(entryId).toArray()
+  return rowsWorthShowing(
+    splitProposals(draft, words),
+    new Set(encounters.map((e) => e.targetId)),
+  )
+}
 
 /** Gathers the entry's material and asks. Kept out of the component so the effect reads plainly. */
 const extract = async (

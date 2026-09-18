@@ -51,7 +51,7 @@ Editorial / book-like, on a warm near-white ground. The notebook metaphor is car
 2. **Gutter rail**, 64px wide, 1px right divider: vertical stack of 36×36px ghost icon
    buttons (Lucide). Contents vary by screen — journal / words / practice on browse
    screens, prev / next / edit on entry detail.
-3. **Content area**, generous padding (28–37px), max text measure ~58–62 characters,
+3. **Content area**, generous padding (28–37px), max text measure `--measure` (56em, roughly 95 characters),
    body copy justified with hyphenation.
 4. **Action bar** (composer and reflect only), 1px top divider on `#f8f4f4`: a muted
    italic status note on the left, buttons on the right.
