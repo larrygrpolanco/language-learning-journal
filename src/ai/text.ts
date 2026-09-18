@@ -39,6 +39,14 @@ export interface CompleteOptions {
   /** Prepended as a `system` message. */
   instructions?: string
   effort?: Effort
+  /**
+   * Route to `MODELS.quick` instead of `MODELS.text`.
+   *
+   * A flag rather than a model id, so `ai/models.ts` stays the only file that names one and a workbook
+   * says what kind of call it is making rather than picking a slug it would then have to maintain.
+   * Set it for a call whose answer is one line and whose quality does not turn on deliberation.
+   */
+  quick?: boolean
 }
 
 /* ── what comes back ──────────────────────────────────────────────────────── */
@@ -82,10 +90,14 @@ const request = (input: string | Message[], opts: CompleteOptions) => {
     typeof input === 'string' ? [{ role: 'user', content: input }] : [...input]
   if (opts.instructions) messages.unshift({ role: 'system', content: opts.instructions })
 
+  const model = opts.quick ? MODELS.quick : MODELS.text
+
+  // The key is omitted rather than nulled for a model that does not reason. Sending it anyway is a
+  // 400, not a silent ignore, so this is what makes the fast path usable at all.
   return {
-    model: MODELS.text,
+    model: model.id,
     input: messages,
-    reasoning: { effort: opts.effort ?? DEFAULT_EFFORT },
+    ...(model.reasons ? { reasoning: { effort: opts.effort ?? DEFAULT_EFFORT } } : {}),
   }
 }
 

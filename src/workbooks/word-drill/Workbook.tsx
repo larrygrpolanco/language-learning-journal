@@ -67,7 +67,7 @@ export const WordDrill = ({
       setBusy(true)
       try {
         const p = cuePrompt(current, bundle)
-        const text = await ai.complete(p.input, { instructions: p.instructions })
+        const text = await ai.complete(p.input, { instructions: p.instructions, quick: true })
         if (live) setAsk(text)
       } catch (e) {
         if (live) setError(failureLine(e))
@@ -111,6 +111,7 @@ export const WordDrill = ({
         schema: VERDICT_SCHEMA,
         guard: isVerdict,
         instructions: p.instructions,
+        quick: true,
       })
       setVerdict(marked)
 

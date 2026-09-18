@@ -6,7 +6,8 @@ import type { Message } from '../../ai/text'
  * rather than in `ai/`.
  *
  * Two calls, and both are cheap on purpose. Making a question is one short answer, and marking is one
- * verdict. Neither is worth `high` reasoning effort on someone's own key.
+ * verdict. Neither is worth reasoning on someone's own key, so both go out with `quick: true` and land
+ * on the non-reasoning model.
  */
 
 export interface Prompt {
