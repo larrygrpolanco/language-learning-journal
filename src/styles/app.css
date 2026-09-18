@@ -1311,6 +1311,100 @@ textarea.rf-input { min-height: 64px; }
 
 textarea.rp-input { min-height: 44px; margin-top: var(--space-4); }
 
+/* ── Choose your own story ──────────────────────────────────────────────────
+   A storybook page: the picture in its mat, the prose under it, and the choice
+   taken set as a margin note so the story reads back as a story rather than as
+   a log of presses. */
+
+.sy { display: flex; flex-direction: column; }
+
+/* Setting up. A row of taps with a field beside it, because the notebook cannot
+   know everywhere you have been and a suggestion you can overwrite beats a menu. */
+.sy-pick { margin-bottom: var(--space-4); }
+.sy-label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: var(--color-neutral-700);
+}
+.sy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+.sy-chip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid transparent;
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.sy-chip:hover { background: var(--color-accent-100); }
+.sy-chip-on { background: var(--color-accent-100); }
+.sy-free { font-family: var(--font-target); }
+
+.sy-pictures {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+}
+
+.sy-scene { margin-bottom: var(--space-6); }
+.sy-scene .plate { margin-bottom: var(--space-3); }
+
+.sy-prose-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.sy-prose {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-target);
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* The choice you took, once you have taken it. Indented and quiet, so scanning back
+   through the story reads the narration and steps over the machinery. */
+.sy-chose {
+  margin: var(--space-2) 0 0 var(--space-4);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-accent);
+  font-family: var(--font-target);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--color-neutral-700);
+}
+
+/* What to do next. Full-width rows rather than a row of buttons, because a choice is
+   a sentence in the target language and a sentence does not fit on a button. */
+.sy-choices {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+}
+.sy-choice {
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-target);
+  font-size: 15px;
+  line-height: 1.5;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--color-divider);
+  padding: var(--space-3) 0;
+}
+.sy-choice:last-child { border-bottom: 1px solid var(--color-divider); }
+.sy-choice:hover { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+
 /* ── Extract ────────────────────────────────────────────────────────────────
    A dialog over the entry, which stays visible behind it. Row anatomy comes
    from the mock: tick, index, term, right-aligned note on one hairline row. */

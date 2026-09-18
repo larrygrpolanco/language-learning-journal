@@ -53,3 +53,31 @@ export const Plate = ({
 export const PlateEmpty = ({ width, height }: { width: number; height: number }) => (
   <span className="plate plate-empty" style={{ width, height }} />
 )
+
+/**
+ * A matted image that is only bytes.
+ *
+ * `Plate` needs an `Attachment` and a `Media`, and a workbook holds neither: generated images live in
+ * React state and die with the sheet (§7), so there is nothing in the database to point at until the
+ * learner presses Keep. This gets them the same mat, hairline and archival filter without inventing
+ * records for pictures that may never become any.
+ */
+export const BlobPlate = ({
+  blob,
+  width,
+  height,
+  alt = '',
+}: {
+  blob: Blob
+  width: number
+  height: number
+  alt?: string
+}) => {
+  const url = useBlobUrl(blob)
+  if (!url) return <PlateEmpty width={width} height={height} />
+  return (
+    <span className="plate" style={{ width, height }}>
+      <img src={url} alt={alt} className="plate-img" />
+    </span>
+  )
+}

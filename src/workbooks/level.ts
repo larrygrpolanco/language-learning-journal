@@ -1,4 +1,5 @@
-import { termAppearsIn } from '../db/normalize'
+import { normalizeTerm, termAppearsIn } from '../db/normalize'
+import type { EncounterTarget, Id } from '../db/types'
 import type { BundledSentence, BundledWord, ContextBundle } from './sdk'
 
 /**
@@ -97,4 +98,52 @@ const block = (
 export const wordsUsedIn = (bundle: ContextBundle, text: string): BundledWord[] => {
   const language = bundle.profile?.language ?? ''
   return bundle.words.filter((w) => termAppearsIn(w.word.term, text, language))
+}
+
+/**
+ * The model's `used` list, resolved back to journal records.
+ *
+ * `used` does three jobs and this is the one that needs code: `targetType` is `'word' | 'sentence'`, so
+ * a generated scene is not a thing a practice event can name, and the supplied items it was built from
+ * are. Without this there is nothing for the support ladder's third rung to record against.
+ *
+ * Anything unmatched is dropped rather than guessed at. The model was told to copy items as written,
+ * and a string that is not in the notebook is either an invention or a paraphrase; recording against
+ * either would put a practice event on the wrong word.
+ */
+export const usedTargets = (
+  bundle: ContextBundle,
+  used: readonly string[],
+): { targetType: EncounterTarget; targetId: Id }[] => {
+  const words = new Map(bundle.words.map((w) => [normalizeTerm(w.word.term), w.word.id]))
+  const sentences = new Map(
+    bundle.sentences.map((s) => [normalizeTerm(s.sentence.text), s.sentence.id]),
+  )
+
+  const out: { targetType: EncounterTarget; targetId: Id }[] = []
+  const seen = new Set<Id>()
+
+  for (const raw of used) {
+    // The material list writes each item as "term — meaning", and a model copying "as written"
+    // sometimes takes the whole line. Cutting at the dash costs nothing when it took just the term.
+    const key = normalizeTerm(raw.split('—')[0] ?? raw)
+    if (key === '') continue
+
+    const wordId = words.get(key)
+    if (wordId !== undefined) {
+      if (!seen.has(wordId)) {
+        seen.add(wordId)
+        out.push({ targetType: 'word', targetId: wordId })
+      }
+      continue
+    }
+
+    const sentenceId = sentences.get(key)
+    if (sentenceId !== undefined && !seen.has(sentenceId)) {
+      seen.add(sentenceId)
+      out.push({ targetType: 'sentence', targetId: sentenceId })
+    }
+  }
+
+  return out
 }

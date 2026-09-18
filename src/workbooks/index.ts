@@ -1,5 +1,6 @@
 import { wordDrill } from './word-drill/manifest'
 import { roleplay } from './roleplay/manifest'
+import { story } from './story/manifest'
 import type { AnyWorkbook } from './sdk'
 
 /**
@@ -12,7 +13,7 @@ import type { AnyWorkbook } from './sdk'
  * The order is the order on the practice page, and the first row gets the primary button. Word drill
  * leads because it is the one that works on the thinnest notebook.
  */
-export const WORKBOOKS: readonly AnyWorkbook[] = [wordDrill, roleplay]
+export const WORKBOOKS: readonly AnyWorkbook[] = [wordDrill, roleplay, story]
 
 export const workbookById = (id: string): AnyWorkbook | undefined =>
   WORKBOOKS.find((w) => w.id === id)
