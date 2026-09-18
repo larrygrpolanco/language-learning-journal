@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { failureLine } from '../../ai/client'
 import { Capturable } from '../../ui/Capturable'
 import { Speak } from '../../ui/Speak'
+import { Support, type Ladder } from '../../ui/Support'
 import { plural } from '../../ui/format'
-import { cuePrompt, isVerdict, markPrompt, VERDICT_SCHEMA, type Verdict } from './prompt'
+import { cuePrompt, hintPrompt, isVerdict, markPrompt, VERDICT_SCHEMA, type Verdict } from './prompt'
 import type { WorkbookProps } from '../sdk'
 
 /**
@@ -15,6 +16,10 @@ import type { WorkbookProps } from '../sdk'
  *
  * Typed input only. §9 puts spoken answers behind xAI's `/v1/stt`, which is a WebSocket a browser
  * cannot attach an Authorization header to, so there is no mic here rather than a mic that fails.
+ *
+ * The support ladder is wired here first because this is the template the other workbooks copy, and
+ * because the mechanic is worth proving on the simplest exercise: three presses reach a model answer,
+ * and taking it records `'shown'`, which advances nothing.
  *
  * Everything generated lives in React state and dies with the sheet (§7). Minimizing and restoring
  * loses the audio and keeps the progress, which is exactly the accepted tradeoff in §15.
@@ -138,6 +143,31 @@ export const WordDrill = ({
     persist({ at: next })
   }
 
+  /**
+   * The three rungs, in order. Only the pressed ones cost anything.
+   *
+   * Plain closures rather than memoized ones: `Support` holds its own state and reads a rung only when
+   * that rung is pressed, so a fresh array per render costs nothing and memoizing it would buy nothing.
+   */
+  const hint = (rung: 0 | 1 | 2) => async () => {
+    if (!current || !ask) throw new Error('nothing to help with yet')
+    const p = hintPrompt(current, ask, bundle, rung)
+    return ai.complete(p.input, { instructions: p.instructions, quick: true })
+  }
+
+  const ladder: Ladder = [hint(0), hint(1), hint(2)]
+
+  /** Rung 3 taken. Recorded, and deliberately inert: nothing counts `'shown'` toward "got it". */
+  const spend = () => {
+    if (!current) return
+    void journal.recordPractice({
+      workbookId: 'word-drill',
+      targetType: 'word',
+      targetId: current.word.id,
+      outcome: 'shown',
+    })
+  }
+
   /** The only thing that turns this session into an entry, and only from this press. */
   const keep = async () => {
     const lines: string[] = []
@@ -237,6 +267,9 @@ export const WordDrill = ({
       ) : null}
 
       {error ? <p className="st-error">{error}</p> : null}
+
+      {/* Keyed on the word, so the ladder resets per item without this component tracking that. */}
+      {ask && !verdict ? <Support key={current.word.id} rungs={ladder} onSpend={spend} /> : null}
 
       <div className="wb-actions">
         <span className="text-muted wb-count">

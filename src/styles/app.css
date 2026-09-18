@@ -970,6 +970,27 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
 }
 .wb-better > .sentence { flex: 1; min-width: 0; }
 
+/* ── Support ────────────────────────────────────────────────────────────────
+   Three presses to the answer, so trying is the shorter path. Rungs stack in the
+   same italic as a verdict, because both are the app talking about your answer
+   rather than being part of the exercise. */
+
+.sup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.sup-rung {
+  margin: 0;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--color-neutral-800);
+}
+.sup-btn { font-size: 12px; padding-left: 0; color: var(--color-neutral-700); }
+.sup-btn:hover:not(:disabled) { color: var(--color-accent); }
+
 /* One chip per docked session, at the foot of the rail. No progress bar, no
    timer, no count. A book left face down on the desk. */
 .rail-dock {

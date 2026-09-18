@@ -132,3 +132,66 @@ export const markPrompt = (
     ],
   }
 }
+
+/* ── the ladder ───────────────────────────────────────────────────────────── */
+
+/**
+ * One rung of help, by height. Concepts §16.
+ *
+ * Three separate prompts rather than one call returning all three, because only the rungs actually
+ * pressed should be paid for and most of the time that is none of them. That also keeps §1 true: each
+ * rung is its own press.
+ *
+ * Rung 2 is deliberately the harder one to write. "The shape of the answer" has to be enough to
+ * unstick someone without being the answer with a word missing, which is why it asks for the grammar
+ * by name and forbids a filled-in example.
+ */
+export const hintPrompt = (
+  word: BundledWord,
+  ask: string,
+  bundle: ContextBundle,
+  rung: 0 | 1 | 2,
+): { instructions: string; input: Message[] } => {
+  const language = bundle.profile?.language ?? 'the target language'
+  const meaning = bundle.profile?.meaningLanguage ?? 'English'
+
+  const rules: Record<0 | 1 | 2, string[]> = {
+    0: [
+      `- Say what the situation is actually asking for, in ${meaning}. What is going on and what they want to achieve.`,
+      `- Do not say what to write. No ${language} at all, not even the word being drilled.`,
+      '- One sentence.',
+    ],
+    1: [
+      `- Give the shape of an answer, in ${meaning}: which ending or construction it wants, and roughly how long.`,
+      `- Name the grammar. Do not write a filled-in ${language} sentence, and do not use the drilled word in a sentence.`,
+      '- Two sentences at most.',
+    ],
+    2: [
+      `- Write one natural ${language} sentence that answers the prompt using ${word.word.term}.`,
+      '- The sentence and nothing else. No translation, no note, no preamble.',
+    ],
+  }
+
+  return {
+    instructions: [
+      `Someone learning ${language} is stuck on a drill prompt and has asked for help.`,
+      profileLine(bundle.profile),
+      '',
+      ...rules[rung],
+    ]
+      .filter((l) => l !== '')
+      .join('\n'),
+    input: [
+      {
+        role: 'user',
+        content: [
+          `Word being drilled: ${word.word.term}`,
+          word.word.meaning ? `Meaning: ${word.word.meaning}` : '',
+          `They were asked: ${ask}`,
+        ]
+          .filter((l) => l !== '')
+          .join('\n'),
+      },
+    ],
+  }
+}
