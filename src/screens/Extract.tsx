@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { db } from '../db/db'
-import { extractFromEntry } from '../ai/extract'
+import { extractFromEntry, type ExtractMode } from '../ai/extract'
 import { failureLine } from '../ai/client'
 import {
   mergeDrafts,
@@ -45,6 +45,10 @@ export const Extract = ({
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(true)
 
+  // Governs both words and sentences alike. Changing it takes effect on the next `Look again`,
+  // same as any other setting here: nothing is re-sent until the learner asks for it.
+  const [mode, setMode] = useState<ExtractMode>('focused')
+
   // Ticked by term and by sentence text, both pre-filled. A Set of keys rather than a flag per row,
   // so the per-item panel and the list cannot disagree about what is on.
   const [tickedWords, setTickedWords] = useState<Set<string>>(new Set())
@@ -68,8 +72,9 @@ export const Extract = ({
           : undefined
 
         // A draft already on the entry is shown as it stands rather than spending a call to
-        // regenerate it. Re-extracting is a separate press.
-        const draft = previous ?? (await extract(notebook, entry))
+        // regenerate it. Re-extracting is a separate press, and the mode picker only appears once
+        // there is something on screen, so the first pass always runs `focused`.
+        const draft = previous ?? (await extract(notebook, entry, 'focused'))
         if (!live) return
 
         if (!previous) await saveProposal(notebook.id, draft)
@@ -108,7 +113,7 @@ export const Extract = ({
         ? { entryId: held.entryId, words: held.words, sentences: held.sentences }
         : undefined
 
-      const merged = mergeDrafts(previous, await extract(notebook, entry))
+      const merged = mergeDrafts(previous, await extract(notebook, entry, mode))
       await saveProposal(notebook.id, merged)
 
       const words = await db.words.where('notebookId').equals(notebook.id).toArray()
@@ -243,6 +248,28 @@ export const Extract = ({
                 Not now
               </button>
               <span className="pick-spacer" />
+              <div className="seg ex-mode" title="How much Look again should pull">
+                <label className="seg-opt">
+                  <input
+                    type="radio"
+                    name="ex-mode"
+                    checked={mode === 'focused'}
+                    onChange={() => setMode('focused')}
+                    disabled={busy}
+                  />
+                  Handful
+                </label>
+                <label className="seg-opt">
+                  <input
+                    type="radio"
+                    name="ex-mode"
+                    checked={mode === 'exhaustive'}
+                    onChange={() => setMode('exhaustive')}
+                    disabled={busy}
+                  />
+                  Exhaustive
+                </label>
+              </div>
               <button className="btn btn-ghost pick-quiet" onClick={() => void again()} disabled={busy}>
                 Look again
               </button>
@@ -284,7 +311,11 @@ export const Extract = ({
 /* ── the call ─────────────────────────────────────────────────────────────── */
 
 /** Gathers the entry's material and asks. Kept out of the component so the effect reads plainly. */
-const extract = async (notebook: Notebook, entry: Entry): Promise<ProposalDraft> => {
+const extract = async (
+  notebook: Notebook,
+  entry: Entry,
+  mode: ExtractMode,
+): Promise<ProposalDraft> => {
   const attachments = await db.attachments.where('entryId').equals(entry.id).toArray()
 
   const files: { kind: 'image' | 'pdf' | 'audio' | 'text'; blob: Blob; filename?: string }[] = []
@@ -305,6 +336,7 @@ const extract = async (notebook: Notebook, entry: Entry): Promise<ProposalDraft>
     body: entry.body,
     pasted: attachments.flatMap((a) => (a.kind === 'text' && a.text ? [a.text] : [])),
     files,
+    mode,
   })
 }
 

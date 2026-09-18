@@ -11,6 +11,9 @@ import type { ProposalDraft, ProposedSentence, ProposedWord } from '../db/types'
  * `journal/proposals.ts` and only becomes records when the learner presses Add.
  */
 
+/** How much of the material to pull. Governs words and sentences alike. */
+export type ExtractMode = 'focused' | 'exhaustive'
+
 export interface ExtractInput {
   entryId: string
   /** The target language, as the learner typed it on the notebook. */
@@ -26,6 +29,8 @@ export interface ExtractInput {
   pasted: readonly string[]
   /** Images and PDFs. Audio is skipped, since nothing here transcribes. */
   files: readonly { kind: 'image' | 'pdf' | 'audio' | 'text'; blob: Blob; filename?: string }[]
+  /** Defaults to `'focused'`, which is the long-standing behaviour. */
+  mode?: ExtractMode | undefined
 }
 
 /* ── the schema ───────────────────────────────────────────────────────────── */
@@ -137,7 +142,10 @@ const instructions = (input: ExtractInput): string =>
     '- Give a word in the form worth learning: a verb as its dictionary form, a noun bare.',
     '- Write a note only where the entry says something about how a word is used. Otherwise leave it null.',
     '- Propose a sentence only when the whole line is in the target language.',
-    '- Prefer a handful of good items over a long list. An entry with nothing in it should return empty arrays.',
+    input.mode === 'exhaustive'
+      ? '- Be exhaustive: include every word worth learning and every sentence that qualifies, however many that is. Do not trim the list for length.'
+      : '- Prefer a handful of the most important words and sentences over a long list.',
+    'An entry with nothing in it should return empty arrays.',
   ]
     .filter((line) => line !== '')
     .join('\n')
@@ -184,6 +192,10 @@ export const extractFromEntry = async (input: ExtractInput): Promise<ProposalDra
     schema: SCHEMA,
     guard: isRawDraft,
     instructions: instructions(input),
+    // Extract writes records a learner will study from, so a shallow, low-effort pass over a long
+    // entry is the wrong trade. `low` (the default) reads as skimming and under-counts; see
+    // ai/models.ts on why this is one of the two calls where that costs quality.
+    effort: 'medium',
   })
 
   return clean(raw, input.entryId)
