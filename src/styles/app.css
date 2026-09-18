@@ -1405,6 +1405,63 @@ textarea.rp-input { min-height: 44px; margin-top: var(--space-4); }
 .sy-choice:last-child { border-bottom: 1px solid var(--color-divider); }
 .sy-choice:hover { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
 
+/* ── Listening dialog ───────────────────────────────────────────────────────
+   Play buttons where the words will be. The rule is the length of the line it is
+   hiding, so the shape of the dialog is visible and its content is not: knowing
+   a turn is short does not give the turn away, and it makes the thing look like a
+   dialog rather than a list of identical buttons. */
+
+.ls { display: flex; flex-direction: column; }
+
+.ls-turns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+}
+
+.ls-turn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 0;
+}
+/* The second speaker sits in from the margin, which is all it takes to read as a turn. */
+.ls-second { padding-left: var(--space-6); }
+
+.ls-who {
+  flex: none;
+  width: 7ch;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12.5px;
+  color: var(--color-neutral-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-line {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-target);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.ls-hidden {
+  flex: 1;
+  height: 1px;
+  background: var(--color-neutral-300);
+}
+
+.ls-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ls-question { display: flex; flex-direction: column; gap: var(--space-2); }
+
 /* ── Extract ────────────────────────────────────────────────────────────────
    A dialog over the entry, which stays visible behind it. Row anatomy comes
    from the mock: tick, index, term, right-aligned note on one hairline row. */

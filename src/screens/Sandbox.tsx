@@ -155,7 +155,7 @@ const seed = async (d: JournalDb): Promise<void> => {
       id: entryId,
       notebookId: FIXTURE_NOTEBOOK,
       date: daysAgo(days),
-      body: `Fixture entry for ${term}.`,
+      body: `Fixture entry for ${term}. 어머님 was in the kitchen again.`,
       origin: 'learner',
       createdAt: daysAgo(days),
       updatedAt: daysAgo(days),
@@ -179,11 +179,39 @@ const seed = async (d: JournalDb): Promise<void> => {
     })
   }
 
-  await d.sentences.add({
-    id: newId(),
-    notebookId: FIXTURE_NOTEBOOK,
-    text: '제가 치울게요',
-    translation: 'let me clear these away',
-    createdAt: daysAgo(3),
-  })
+  // Enough sentences for a sentence-led request to have something to work from. One sentence was
+  // fine while word drill was the only workbook; a listening dialog built from one line is not a
+  // dialog, and a fixture that cannot exercise a workbook is not a fixture for it.
+  const lines: [string, string, number][] = [
+    ['제가 치울게요', 'let me clear these away', 3],
+    ['얼른 오세요', 'come quickly', 5],
+    ['반찬 좀 더 드릴까요?', 'shall I give you some more side dishes?', 11],
+    ['제가 챙길게요', "I'll see to it", 14],
+    ['그릇은 어디에 둘까요?', 'where should I put the bowls?', 30],
+    ['수고하셨습니다', 'thank you for your trouble', 8],
+  ]
+
+  const [firstEntry] = await d.entries.where('notebookId').equals(FIXTURE_NOTEBOOK).toArray()
+
+  for (const [text, translation, days] of lines) {
+    const sentenceId = newId()
+    await d.sentences.add({
+      id: sentenceId,
+      notebookId: FIXTURE_NOTEBOOK,
+      text,
+      translation,
+      createdAt: daysAgo(days),
+    })
+    // Hung off an entry, so the focus picker has something to offer for this fixture too.
+    if (firstEntry) {
+      await d.encounters.add({
+        id: newId(),
+        notebookId: FIXTURE_NOTEBOOK,
+        entryId: firstEntry.id,
+        targetType: 'sentence',
+        targetId: sentenceId,
+        createdAt: daysAgo(days),
+      })
+    }
+  }
 }

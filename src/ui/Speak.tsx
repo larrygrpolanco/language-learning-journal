@@ -24,6 +24,7 @@ export const Speak = ({
   size = 36,
   title = 'Speak this',
   owner,
+  voice,
 }: {
   text: string
   language: string
@@ -32,6 +33,13 @@ export const Speak = ({
   title?: string
   /** The word or sentence this line is. Omit for text the journal does not hold. */
   owner?: AudioTarget
+  /**
+   * A `voice_id`, for the one case that needs more than one: a dialog with two speakers.
+   *
+   * Only meaningful without an `owner`. A kept clip is the reading of that word, and a second voice for
+   * the same record would make the notebook half one voice and half another with nothing to say why.
+   */
+  voice?: string
 }) => {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
@@ -52,7 +60,9 @@ export const Speak = ({
     setBusy(true)
     setError(undefined)
     try {
-      const blob = owner ? await audioFor(owner, text, language) : await speak(text, language)
+      const blob = owner
+        ? await audioFor(owner, text, language)
+        : await speak(text, language, voice !== undefined ? { voice } : {})
       if (urlRef.current) URL.revokeObjectURL(urlRef.current)
       urlRef.current = URL.createObjectURL(blob)
       audioRef.current?.pause()

@@ -126,10 +126,13 @@ export interface AI {
   complete: (input: string | Message[], opts?: CompleteOptions) => Promise<string>
   completeJson: <T>(input: string | Message[], opts: JsonOptions<T>) => Promise<T>
   /**
-   * Speaks a line in the notebook's language. Reused within the page load, never stored (§1).
+   * Speaks a line in the notebook's language, as bytes. Reused within the page load, never stored (§1).
    *
    * The voice is open because a two-speaker dialog needs two of them. The language is not, so a
    * workbook still cannot ask for the wrong language for the notebook it is running in.
+   *
+   * A workbook that just wants a play button should render `<Speak>` instead, which owns the object
+   * URL, the revoke and the failure line. This is for the bytes themselves.
    */
   speak: (text: string, opts?: { voice?: string }) => Promise<Blob>
   draw: (prompt: string) => Promise<Blob>
