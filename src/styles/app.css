@@ -1462,6 +1462,30 @@ textarea.rp-input { min-height: 44px; margin-top: var(--space-4); }
 }
 .ls-question { display: flex; flex-direction: column; gap: var(--space-2); }
 
+/* ── Describe the picture ───────────────────────────────────────────────────
+   The picture, then the blank. Nothing new but two notes and the plate's air,
+   because the rest is word drill's furniture and this is the same shape: one
+   thing to look at, one thing to write. */
+
+.ds { display: flex; flex-direction: column; }
+.ds .plate { margin-bottom: var(--space-4); }
+textarea.ds-input { min-height: 88px; }
+
+/* Why the picture is not the one you had, and why the blank is empty again. */
+.ds-note {
+  margin: 0 0 var(--space-3);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* What was in the picture and not in the description. The one piece of feedback here that
+   only a marker looking at the same image could give, so it gets its own line. */
+.ds-missed {
+  margin: var(--space-2) 0 0;
+  font-size: 13.5px;
+  color: var(--color-accent-700);
+}
+
 /* ── Extract ────────────────────────────────────────────────────────────────
    A dialog over the entry, which stays visible behind it. Row anatomy comes
    from the mock: tick, index, term, right-aligned note on one hairline row. */
