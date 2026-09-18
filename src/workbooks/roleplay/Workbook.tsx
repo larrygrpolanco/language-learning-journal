@@ -68,6 +68,8 @@ export const Roleplay = ({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const [saved, setSaved] = useState(false)
+  // Bumped by Try again, which is what lets the setup effect run a second time.
+  const [attempt, setAttempt] = useState(0)
 
   const draftRef = useRef<HTMLTextAreaElement>(null)
   const foot = useRef<HTMLDivElement>(null)
@@ -105,7 +107,7 @@ export const Roleplay = ({
     return () => {
       live = false
     }
-  }, [person, people, bundle, ai])
+  }, [person, people, attempt, bundle, ai])
 
   useEffect(() => {
     setLabel(person ? `${person.name}${thread.length > 0 ? ` · ${thread.length}` : ''}` : 'choosing')
@@ -249,6 +251,20 @@ export const Roleplay = ({
 
         {people && people.length === 0 ? (
           <p className="text-muted pick-empty">Nobody to write to yet. Write an entry or two first.</p>
+        ) : null}
+
+        {!busy && !people ? (
+          <div className="wb-actions">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setError(undefined)
+                setAttempt((a) => a + 1)
+              }}
+            >
+              Try again
+            </button>
+          </div>
         ) : null}
       </div>
     )

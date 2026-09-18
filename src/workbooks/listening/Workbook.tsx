@@ -58,12 +58,18 @@ export const Listening = ({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const [saved, setSaved] = useState(false)
+  // Bumped by Try again, which is what lets the effect below run a second time.
+  const [attempt, setAttempt] = useState(0)
 
   const language = bundle.profile?.language ?? ''
   const revealed = marks !== undefined
 
   // One call for the dialog and its questions. Persisted, unlike word drill's cue: regenerating would
   // hand back a different conversation, and the learner may already have listened to this one.
+  //
+  // `setState` is deliberately not a dependency. It is stable in both hosts, and listing it would make
+  // this effect re-run on any host that ever stopped memoizing it, which for an effect that spends money
+  // is the wrong failure. The `live` flag is what makes StrictMode's double invoke correct in dev.
   useEffect(() => {
     let live = true
     if (dialog) return
@@ -94,7 +100,8 @@ export const Listening = ({
     return () => {
       live = false
     }
-  }, [dialog, bundle, ai, setState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialog, attempt, bundle, ai])
 
   useEffect(() => {
     if (!dialog) return
@@ -177,7 +184,13 @@ export const Listening = ({
           <p className="rf-waiting">Writing it…</p>
         ) : (
           <div className="wb-actions">
-            <button className="btn btn-primary" onClick={() => setDialog(undefined)}>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setError(undefined)
+                setAttempt((a) => a + 1)
+              }}
+            >
               Try again
             </button>
           </div>

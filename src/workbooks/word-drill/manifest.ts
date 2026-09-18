@@ -24,11 +24,17 @@ const manifest: WorkbookManifest<DrillState> = {
   /**
    * The line under the name on the practice page. UI guide §8 asks it to state what this draws from
    * the notebook, so it counts the real bundle rather than describing the request in the abstract.
+   *
+   * Which is also why it reports a focus when there is one. The bundle it is handed is already built
+   * with the scope, so this needs no extra plumbing to tell the truth about it.
    */
-  describes: (b: ContextBundle) =>
-    b.words.length === 0
-      ? 'Nothing to draw on yet. Write a few entries first.'
-      : `Draws on ${plural(b.words.length, 'word')} you have met and barely practiced.`,
+  describes: (b: ContextBundle) => {
+    if (b.words.length === 0) return 'Nothing to draw on yet. Write a few entries first.'
+    const focus = b.words.filter((w) => w.focus).length
+    return focus > 0
+      ? `Drills the ${plural(focus, 'word')} you picked, then whatever else is due.`
+      : `Draws on ${plural(b.words.length, 'word')} you have met and barely practiced.`
+  },
   Component: WordDrill,
 }
 

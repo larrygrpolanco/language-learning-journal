@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { JournalDb, newId, nowIso } from '../db/db'
 import { WORKBOOKS } from '../workbooks'
@@ -77,6 +77,24 @@ const SandboxInner = () => {
     window.location.reload()
   }
 
+  /**
+   * Stable across renders, which matters more here than it looks.
+   *
+   * A workbook's "fetch this once on mount" effects list `ai` among their dependencies. Built inline in
+   * the JSX below, it was a new object on every render, so those effects re-ran on every render and a
+   * workbook could pay for its setup twice. The workbooks now carry their own ref guards, but handing
+   * them an unstable surface would still make the sandbox behave unlike `WorkbookLayer`, which memoizes
+   * it — and a test bed that differs from the real thing is worth less than no test bed.
+   */
+  const language = bundle?.profile?.language ?? 'Korean'
+  const ai = useMemo(() => aiFor(language), [language])
+  const journal = useMemo(
+    () => (db && picked ? journalWriterFor(FIXTURE_NOTEBOOK, picked.id, db) : undefined),
+    [db, picked],
+  )
+  // Stable for the same reason `ai` is: it is handed to the workbook as a prop.
+  const setWorkbookState = useCallback((next: unknown) => setState(next), [])
+
   return (
     <Shell context="Sandbox" detail={picked ? picked.name : 'pick a workbook'}>
       <p className="st-prose">
@@ -100,14 +118,14 @@ const SandboxInner = () => {
 
       <hr className="hr" />
 
-      {picked && bundle && db ? (
+      {picked && bundle && journal ? (
         <picked.Component
           bundle={bundle}
           state={state as never}
-          setState={((next: unknown) => setState(next)) as (next: never) => void}
+          setState={setWorkbookState as (next: never) => void}
           setLabel={setLabel}
-          ai={aiFor(bundle.profile?.language ?? 'Korean')}
-          journal={journalWriterFor(FIXTURE_NOTEBOOK, picked.id, db)}
+          ai={ai}
+          journal={journal}
           minimize={() => setPicked(undefined)}
           close={() => setPicked(undefined)}
         />

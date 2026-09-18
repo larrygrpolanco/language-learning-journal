@@ -177,7 +177,7 @@ interface Entry {
   body: string              // '' is legal if an attachment exists
   title?: string
   source?: string
-  topic?: string
+  topic?: string           // dead: patchable in writes.ts, searched in Timeline.tsx, never written
   origin: 'learner' | 'activity'
   createdAt: Iso
   updatedAt: Iso
@@ -720,18 +720,50 @@ workbooks/
   index.ts       the registry, an array, plus workbookById()
   sdk.ts         types only, and register()
   sessions.ts    session CRUD (§7)
-  context.ts     buildContext(), plus the pure selection rules
+  context.ts     buildContext(), the pure selection rules, focusCandidates()
+  level.ts       the one copy of the level rule, plus used/word matching
   writer.ts      journalWriterFor(), aiFor()
   word-drill/
     manifest.ts
     Workbook.tsx
     prompt.ts
+  roleplay/  story/  listening/  describe/    same three files each
 ```
+
+### Three things that are shared rather than per workbook
+
+The five workbooks would each have arrived at their own answer to the same three questions, and would
+have drifted apart on the day one of them was tuned. So each lives in exactly one file.
+
+**Focus**, `WorkbookScope` in `db/types.ts`, resolved in `context.ts`. A marking rather than a filter:
+chosen words and sentences are flagged, exempted from the request's own `familiarity` and `recentDays`
+filters, and sorted first, while the rest of the notebook still arrives behind them. The exemption is
+the part that matters — without it, focusing an entry from eight months ago against word drill's
+`recentDays: 60` would filter the chosen words straight back out. The scope carries resolved ids, not
+entry ids alone, so a docked session cannot gain material because one of its entries was edited
+afterwards. `ui/FocusPicker.tsx` is where it is set, on the practice row.
+
+**The support ladder**, `ui/Support.tsx`. Three presses, each giving less help than the next, and only
+the third records `'shown'`. `estimateFamiliarity` counts only `'right'`, so taking the answer leaves
+the word where it was: credit withheld, nothing deducted, nothing said. Nothing anywhere branches on
+`'shown'`, which is what keeps §16's ban on automatic difficulty adjustment true. The component takes a
+three-tuple of reveals and an `onSpend`, and never touches the journal, so a workbook cannot decide how
+many rungs there are or which one costs. The roleplay has no ladder on purpose: support there is asking
+the character in the target language, and asking is genuine use.
+
+**The level rule**, `workbooks/level.ts`. `levelRules(bundle)` and `materialLines(bundle)`, pasted into
+every generative prompt. Deliberately about the material rather than about a level: "write at A2" asks
+the model to guess at a scale nobody shares, where "use these words and nothing harder" is checkable,
+and the `used` field every generative workbook returns is what checks it. `usedTargets` resolves that
+field back to word and sentence ids, which is what the ladder's third rung records against, since
+`targetType` is `'word' | 'sentence'` and a generated scene is neither. `wordsUsedIn` does the reverse
+for the learner's own writing, which is what the roleplay and describe record `'right'` from.
 
 ```ts
 interface WorkbookManifest<S = unknown> {
   id: string
   name: string                                   // Cormorant 21px on the practice page
+  icon: LucideIcon                               // its own glyph, from Lucide's book family
   request: BundleRequest                         // what it needs from the notebook
   describes: (b: ContextBundle) => string        // "Draws on 14 recent words"
   Component: ComponentType<WorkbookProps<S>>
@@ -872,7 +904,24 @@ the sentence is off, and the correction rides along in a `better` field instead.
 Its state is `{ at: number; done: Record<Id, { answer: string; right: boolean }> }`, which is the whole
 of what survives a minimize. Its output is wrapped in `<Capturable>` (§11), so pulling a word out of an
 exercise gains a word on today's entry and nothing else. Its prompts live in its own folder, per the
-rule above.
+rule above. It is also the support ladder's first consumer, which is why the ladder was wired here
+before any of the four exercises that needed it.
+
+### The other four
+
+| Workbook | Leads with | Generated content persists | Costs beyond text |
+|---|---|---|---|
+| Text-message roleplay | entry bodies, to find people | the whole thread | none |
+| Choose your own story | focus and entry bodies | every scene's prose | one image per scene, opt in |
+| Listening dialog | sentences | the dialog and the answers | two TTS calls per line played, cached |
+| Describe the picture | words | the brief and the verdict | one image per press |
+
+The persistence column is the one rule worth stating, because §7 says generated content dies with the
+sheet and three of these keep text. The line is this: **text persists where regenerating it would lose
+the exercise rather than repeat it.** Word drill's cue is regenerated because a different cue for the
+same word is still that word's drill. A different thread, a different story, or a different dialog is a
+different exercise, and a learner who put one down mid-conversation would come back to someone else's.
+Media never persists, in any of them.
 
 ---
 
@@ -886,7 +935,7 @@ ai/
   client.ts    fetch wrapper, base URL, auth header, error normalisation, blob helpers
   models.ts    pinned model id per capability, and the reasoning-effort default
   text.ts      complete(), completeJson(schema), attachmentPart()
-  speech.ts    speak(text, language) -> Blob
+  speech.ts    speak(text, language, opts?) -> Blob     // opts.voice, for a two-speaker dialog
   image.ts     draw(prompt) -> Blob[], drawOne(prompt) -> Blob
   video.ts     animate(prompt, signal?) -> Blob   // defined, unused, unverified
   extract.ts   extractFromEntry(input) -> ProposalDraft   (§10)
@@ -1250,6 +1299,20 @@ Two things deferred rather than dropped. Notebook copying (concepts §4) is stil
 `copiedFromId` is in the schema and `withFreshIds` already does the whole id remap, so it is now mostly
 wiring that to a button. Spoken input in workbooks is blocked on the STT correction in §9.
 
+One mock row deliberately not built. practice.html draws a **Reflect on an entry** row, and Reflect
+shipped instead as a journal action at `/n/:nb/e/:id/reflect`, reachable from the entry, appending into
+that entry's body. As a practice row it would need an entry chooser first, which means discussing an
+entry without being able to see it while it edits a body off screen. Reflecting is *about* an entry, so
+the entry is the right door. On this row the mock is stale rather than unbuilt.
+
+**`Entry.topic` is a dead field.** Declared in `db/types.ts`, patchable through `saveEntry`, and
+searched by the timeline filter, and nothing has ever written it because there is no UI that sets it.
+It cost something: the story workbook was specified to draw on "focus and topics", and it draws on the
+notebook focus plus the titles and bodies of the focused entries instead, which is strictly better
+because the learner picks those. Left in place rather than removed, since the search would have to stop
+looking at it and the field is harmless. `.wd-drill` in `word-drill/Workbook.tsx` is the same shape one
+layer out: a class name with no rule behind it, in the CSS rather than the schema.
+
 ---
 
 ## 15. Accepted tradeoffs
@@ -1261,7 +1324,7 @@ Each of these is a cost of a §1 decision, not an oversight.
 | Edits on two devices between exports lose one side | One device is home. Removes all sync code |
 | The API key is readable in the browser | Personal use. A proxy is the answer if that changes |
 | No live voice conversation, and no spoken input at all | Both need a server: realtime needs ephemeral tokens, and `/v1/stt` is a socket a browser cannot authenticate. TTS still works, and typing was always the fallback |
-| Reopening a docked session regenerates its images | Nothing in v1 draws. Audio is kept on words and sentences, and held for the page load elsewhere (§9) |
+| Reopening a docked session loses its images | The story's pictures are mood, and its text survives. Describe the picture says so out loud and redraws, because there the picture is the question. Audio is kept on words and sentences, and held for the page load elsewhere (§9) |
 | The export bundle grows with the vocabulary once clips are kept | Bounded by the word list rather than by usage, so it is predictable. Unlike a cache it needs no eviction policy |
 | Browser can evict IndexedDB | `storage.persist()`, an export reminder, and Tauri would end it |
 | CJK word-in-sentence links over-match | Cosmetic, and removable by hand |

@@ -75,6 +75,8 @@ export const Story = ({
   const [drawing, setDrawing] = useState(false)
   const [error, setError] = useState<string>()
   const [saved, setSaved] = useState(false)
+  // Bumped by Try again, which is what lets the setup effect run a second time.
+  const [attempt, setAttempt] = useState(0)
 
   const foot = useRef<HTMLDivElement>(null)
   const begun = useRef(false)
@@ -114,7 +116,7 @@ export const Story = ({
     return () => {
       live = false
     }
-  }, [setup, offer, bundle, ai])
+  }, [setup, offer, attempt, bundle, ai])
 
   useEffect(() => {
     setLabel(setup ? `scene ${Math.max(scenes.length, 1)} of ${LAST_SCENE}` : 'setting up')
@@ -298,6 +300,20 @@ export const Story = ({
               </button>
             </div>
           </>
+        ) : null}
+
+        {!busy && !offer ? (
+          <div className="wb-actions">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setError(undefined)
+                setAttempt((a) => a + 1)
+              }}
+            >
+              Try again
+            </button>
+          </div>
         ) : null}
       </div>
     )
