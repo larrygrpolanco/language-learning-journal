@@ -17,21 +17,46 @@ import type { BundledSentence, BundledWord, ContextBundle } from './sdk'
  */
 
 /**
+ * How tightly to hold to the material.
+ *
+ * `strict` is for a text the learner reads cold, a story scene or a dialog, where one unknown word
+ * too many and the exercise stops being readable. `stretch` is for a conversation. There the material
+ * is the anchor rather than the fence: a person who only ever texts back in the learner's own
+ * sentences is a mirror, and the learner stops having anything to answer.
+ */
+export type Reach = 'strict' | 'stretch'
+
+/**
  * The instruction block, in the notebook's own languages.
  *
  * Deliberately about the material rather than about a level. "Write at A2" asks the model to guess at
  * a scale it has no reason to share with anyone; "use these words and nothing harder" is checkable,
  * and `used` is what checks it.
  */
-export const levelRules = (bundle: ContextBundle): string => {
+export const levelRules = (bundle: ContextBundle, reach: Reach = 'strict'): string => {
   const language = bundle.profile?.language ?? 'the target language'
   const meaning = bundle.profile?.meaningLanguage ?? 'English'
 
+  const scope =
+    reach === 'strict'
+      ? [
+          `- Build what you write out of the material listed below, plus the everyday connective language it takes to join it up: particles, endings, pronouns, numbers, and the ordinary verbs of getting through a sentence.`,
+          `- If you find you need a word that is not listed, choose a simpler idea rather than a harder word. Say less rather than reaching further.`,
+        ]
+      : [
+          `- The material listed below is your anchor, not your limit. Lean on it, and reach past it the way a real person would: everyday words someone at this stage could work out from context.`,
+          `- Nothing rare, literary or technical. If a message only makes sense with a word they could not guess, say it more simply.`,
+        ]
+
+  const shape =
+    reach === 'strict'
+      ? `- Keep to the length and the shape of the listed sentences. If they are short, yours are short.`
+      : `- Do not copy the listed sentences back. Vary them, recombine them, put them in new situations.`
+
   return [
-    `- Build what you write out of the material listed below, plus the everyday connective language it takes to join it up: particles, endings, pronouns, numbers, and the ordinary verbs of getting through a sentence.`,
-    `- If you find you need a word that is not listed, choose a simpler idea rather than a harder word. Say less rather than reaching further.`,
+    ...scope,
     `- Do not teach. No glosses, no explanations, no "this means", no new vocabulary offered on the side.`,
-    `- Keep to the length and the shape of the listed sentences. If they are short, yours are short.`,
+    shape,
     `- Stay in ${language} unless the field being asked for says otherwise. ${meaning} appears only where it is asked for by name.`,
     `- List in "used" exactly the listed words and sentences you actually used, copied as they are written above. Nothing you did not use, and nothing that was not on the list.`,
   ].join('\n')

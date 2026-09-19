@@ -143,6 +143,7 @@ export const Roleplay = ({
         schema: TURN_SCHEMA,
         guard: isTurnReply,
         instructions: p.instructions,
+        quick: true,
       })
 
       const withHers = [...next, { mine: false, text: reply.line }]

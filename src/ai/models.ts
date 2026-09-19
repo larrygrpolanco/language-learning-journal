@@ -19,13 +19,15 @@ export interface ModelSpec {
 }
 
 /**
- * Two text models, because the four text calls in this app are not one kind of work.
+ * Two text models, because the text calls in this app are not one kind of work.
  *
- * `text` handles Extract and Reflect. Extract reads a photographed textbook page and writes records,
- * and Reflect has to ask a question that builds on the last answer. Those are the two calls where a
- * lazy answer is a wasted one.
+ * `text` handles Extract, Reflect, and each workbook's setup: the call that designs the exercise and
+ * is made once. Extract reads a photographed textbook page and writes records, Reflect has to ask a
+ * question that builds on the last answer, and a setup decides whether the whole session is any good.
+ * Those are the calls where a lazy answer is a wasted one.
  *
- * `quick` handles the drill cue and its marking. Measured against the same prompts, a JSON answer came
+ * `quick` handles every turn a learner waits on: drill cues, marking and follow-ups, roleplay replies,
+ * story scenes, and the support ladder. Measured against the same prompts, a JSON answer came
  * back in 973ms versus 4807ms, and an image read in 564ms versus 14055ms, because the model emits no
  * reasoning tokens at all rather than merely fewer. That trade is right for one short cue and one
  * verdict, and wrong for Extract: on the image probe it answered "rectangle" where `text` read the

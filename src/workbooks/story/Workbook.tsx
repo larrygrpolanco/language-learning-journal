@@ -171,6 +171,8 @@ export const Story = ({
         schema: SCENE_SCHEMA,
         guard: isScene,
         instructions: p.instructions,
+        // A turn, not the setup. The setup reasons; each scene after it is waited on between choices.
+        quick: true,
       })
 
       const next: Told[] = [

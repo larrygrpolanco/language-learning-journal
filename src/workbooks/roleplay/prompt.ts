@@ -101,11 +101,18 @@ export const setupPrompt = (bundle: ContextBundle): { instructions: string; inpu
       '- If the entries name nobody, invent people who fit what this notebook is for, with fromEntries false.',
       `- "who", "situation" and "task" are all in ${meaning}. "name" is however the entries write it.`,
       '- A task is one concrete outcome: getting agreement on a time, getting someone to bring something, putting something off without offence. Not "have a chat".',
+      '- Pick tasks that take several messages and need them to explain, ask, or push back, not one they could settle with a single yes.',
+      '- Pick tasks where the words and sentences they have been collecting would actually come up. That material is listed after the entries.',
       '- Nothing generic. A thread with this person about this, not a language-textbook dialogue.',
     ]
       .filter((l) => l !== '')
       .join('\n'),
-    input: [{ role: 'user', content: entriesBlock(bundle) }],
+    input: [
+      {
+        role: 'user',
+        content: [entriesBlock(bundle), materialLines(bundle)].filter((l) => l !== '').join('\n\n'),
+      },
+    ],
   }
 }
 
@@ -161,12 +168,21 @@ export const isTurnReply = (v: unknown): v is TurnReply => {
 /**
  * Her next message, given the whole thread.
  *
+ * The character's job is to make the learner write, which is not the same as writing in the learner's
+ * material. A character that uses every listed sentence and ends each message on a statement gives
+ * them nothing to do but agree. So she ends on something they have to answer, sets up moments where
+ * their own words are the natural reply, and brings in a snag before the task settles. The level rule
+ * is `stretch` here for the same reason: a thread held to the listed sentences reads as an echo.
+ *
  * The character is instructed to answer a question about the language in the language, because that is
  * what asking "뭐라고요?" mid-thread actually gets you and it is the reason this workbook needs no help
  * button. Asking is genuine use, so nothing is recorded against it.
  *
  * `done` is the character's judgment on their own conversation, which is the only place it can live:
  * the app cannot tell whether "토요일 좋아요" settled the matter, and the character can.
+ *
+ * Sent to the quick model. A turn is one or two short lines, and waiting several seconds for each is
+ * what made the thread feel like a form rather than a conversation. The reasoning goes into the setup.
  */
 export const turnPrompt = (
   bundle: ContextBundle,
@@ -182,13 +198,20 @@ export const turnPrompt = (
     `The thread is about: ${person.situation}`,
     `They are trying to: ${person.task}`,
     '',
-    '- Write as this person texting, not as a teacher. Short messages, the register this relationship would actually use.',
+    'Your real job is to get them writing. How:',
+    '- End almost every message with something they have to answer: a question, a choice, a problem, a request. Something "네" or "좋아요" does not answer.',
+    '- Steer toward moments where the words and sentences listed below are the natural thing for them to say. Ask the question those words answer, raise the problem they solve. Using the material yourself does nothing for them.',
+    '- Treat the situation as a starting point, not a script. Follow a tangent they open, react to what they actually said, add a snag before the task settles: a time that does not work, something missing, someone else involved.',
+    '- Ask for detail: why, when, which one, how many. Make them say more than they planned to.',
+    '- Do not do their task for them. Make them ask.',
+    '',
+    'How to sound:',
+    '- Write as this person texting, not as a teacher. One or two short messages, the register this relationship would actually use.',
     '- Never correct their language and never comment on it. If a message is broken but clear, respond to what they meant.',
     `- If they ask you to repeat, slow down, or explain a word, do it in ${language}, in simpler ${language}. That is a normal thing to be asked and not a reason to switch to ${meaning}.`,
-    '- Do not do their task for them. Make them ask.',
-    '- Set done true only once the task has actually been settled. Then your message is the one that settles it.',
+    '- Set done true only once the task has actually been settled, never in the first few exchanges. Then your message is the one that settles it.',
     '',
-    levelRules(bundle),
+    levelRules(bundle, 'stretch'),
     '',
     materialLines(bundle),
   ]
@@ -199,7 +222,12 @@ export const turnPrompt = (
   // as a transcript it has been handed. The opening turn has no history at all.
   const input: Message[] =
     thread.length === 0
-      ? [{ role: 'user', content: 'Open the thread. Send the first message.' }]
+      ? [
+          {
+            role: 'user',
+            content: 'Open the thread. Send the first message, ending on something they have to answer.',
+          },
+        ]
       : thread.map((t) => ({ role: t.mine ? 'user' : 'assistant', content: t.text }))
 
   return { instructions, input }

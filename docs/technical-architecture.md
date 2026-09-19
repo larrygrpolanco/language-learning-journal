@@ -723,16 +723,17 @@ workbooks/
   context.ts     buildContext(), the pure selection rules, focusCandidates()
   level.ts       the one copy of the level rule, plus used/word matching
   writer.ts      journalWriterFor(), aiFor()
+  drill.tsx      the cue, answer, verdict, follow-up loop both drills run on
   word-drill/
     manifest.ts
     Workbook.tsx
     prompt.ts
-  roleplay/  story/  listening/  describe/    same three files each
+  sentence-drill/  roleplay/  story/  listening/  describe/    same three files each
 ```
 
 ### Three things that are shared rather than per workbook
 
-The five workbooks would each have arrived at their own answer to the same three questions, and would
+The workbooks would each have arrived at their own answer to the same three questions, and would
 have drifted apart on the day one of them was tuned. So each lives in exactly one file.
 
 **Focus**, `WorkbookScope` in `db/types.ts`, resolved in `context.ts`. A marking rather than a filter:
@@ -758,6 +759,13 @@ and the `used` field every generative workbook returns is what checks it. `usedT
 field back to word and sentence ids, which is what the ladder's third rung records against, since
 `targetType` is `'word' | 'sentence'` and a generated scene is neither. `wordsUsedIn` does the reverse
 for the learner's own writing, which is what the roleplay and describe record `'right'` from.
+
+The rule has two reaches. `strict`, the default, holds a story scene or a dialog to the listed material
+and the shape of the listed sentences, because a text read cold stops being readable one unknown word
+too early. `stretch` is for the roleplay, where the material is the anchor rather than the fence: the
+character leans on it, reaches for everyday words a learner could guess from context, and never copies
+a listed sentence back. A character held to `strict` texts the learner's own sentences back at them,
+and a thread like that gives them nothing to answer.
 
 ```ts
 interface WorkbookManifest<S = unknown> {
@@ -901,11 +909,36 @@ asked to give a situation rather than a definition, takes a typed answer, and ma
 to mark it. Marking is deliberately generous: using the word acceptably counts even if something else in
 the sentence is off, and the correction rides along in a `better` field instead.
 
-Its state is `{ at: number; done: Record<Id, { answer: string; right: boolean }> }`, which is the whole
-of what survives a minimize. Its output is wrapped in `<Capturable>` (§11), so pulling a word out of an
-exercise gains a word on today's entry and nothing else. Its prompts live in its own folder, per the
-rule above. It is also the support ladder's first consumer, which is why the ladder was wired here
-before any of the four exercises that needed it.
+A cue's angle is picked in code, not by the model: a reply to something someone said, a reason, the
+past, a question, a refusal, an offer, or a second word from the bundle to combine with. The cue goes to
+the quick model, which does not deliberate, so asking it to "be varied" gets eight cues of the same
+shape. Choosing the angle in code gets variety for nothing.
+
+Marking also writes the next round. The verdict carries a `next` field: a follow-up cue that reacts to
+what the learner wrote and asks for something the last answer did not need, such as a different form, a
+reason, or a detail. One call rather than two, because the follow-up has to have read the answer, and
+the marking call already has. An item gets at most `MAX_ROUNDS` rounds, three, and on the last one the
+prompt asks for an empty `next`. Moving on is one press at any point. Every answer records a practice
+event. That inflates nothing, because `estimateFamiliarity` asks whether there is a recent `'right'`,
+not how many.
+
+The loop lives in `workbooks/drill.tsx`. Word drill and sentence drill are the same exercise over
+different material, so each is a thin `Workbook.tsx` that hands `Drill` its items, a `view` into the
+shape the engine displays, and its three prompts. The teaching logic stays in each `prompt.ts`.
+
+Its state is `{ at: number; rounds: Round[]; done: Record<Id, { answers: string[]; right: boolean }> }`.
+`rounds` is the exchange on the current item and is kept. A different opening cue for the same word
+is still that word's drill, but a follow-up is a reply to what the learner wrote, and losing it would
+lose the exercise rather than repeat it. The persistence rule below applies. `restore` reads the older
+single-`answer` shape, so a session docked before follow-ups existed still opens. Its output is wrapped
+in `<Capturable>` (§11), so pulling a word out of an exercise gains a word on today's entry and nothing
+else. It is also the support ladder's first consumer. The ladder is keyed on the item and the round,
+so every follow-up starts back at the bottom rung.
+
+**Sentence drill** is its twin over `sentences: { limit: 8 }`. Each cue asks for the sentence's pattern
+bent to a new situation: another time, another listener, the negative, a question, a reply, or a reason
+added. Saying a collected sentence back proves nothing. It is right when the pattern survives the
+change, and practice is recorded with `targetType: 'sentence'`.
 
 ### The other four
 
@@ -969,6 +1002,14 @@ earlier draft of this section, the probe is right.
 a `reasoning` item on every call observed. The answer is the element with `type: 'message'`, and its
 text is the `output_text` parts of its `content`. Taking `output[0]` yields the model's summary of the
 prompt: prose that will not parse for a JSON call, and the wrong text for a prose one.
+
+**Setups reason, turns do not.** `MODELS.quick` is a non-reasoning model, and a JSON answer comes back
+from it in about one second against about five from `grok-4.6` at `low`. The split follows the shape
+of each workbook. The call that designs the exercise is made once and decides its quality, so it
+reasons: roleplay's people, the story's setup, the listening dialog. Every call the learner waits on
+between their own moves goes quick: drill cues, marking and follow-ups, each roleplay turn, each story
+scene, listening's marks, and the ladder's rungs. The exception is anything that reads an image.
+Describe's brief, marking and hints stay on `text`, because the quick model misreads pictures.
 
 **Reasoning effort is a cost decision, not a quality dial.** `grok-4.6` reasons at `high` unless told
 otherwise. Measured on a two-word answer: `high` spent 1671 reasoning tokens against 34 real ones,

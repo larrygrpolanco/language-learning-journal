@@ -954,6 +954,12 @@ a.sentence:hover { border-left-color: var(--color-accent-700); }
   line-height: 1.15;
 }
 .wb-term-meaning { font-size: 13px; }
+/* A whole sentence at term size shouts. Same face, a size down. */
+.wb-term-sentence { font-size: 20px; line-height: 1.35; }
+
+/* One exchange in a drill. Rounds stack, so the follow-up reads as a reply to the last answer. */
+.dr-round > .rf-question + * { margin-top: var(--space-3); }
+.dr-round + .dr-round { margin-top: var(--space-6); }
 
 .wb-verdict {
   margin: var(--space-3) 0 0;

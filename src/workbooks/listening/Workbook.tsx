@@ -126,6 +126,8 @@ export const Listening = ({
         schema: MARKS_SCHEMA,
         guard: isMarks,
         instructions: p.instructions,
+        // Marking short answers against a dialog it is handed. Nothing here needs deliberation.
+        quick: true,
       })
       setMarks(got.marks)
       setState({ dialog, answers, marks: got.marks })
