@@ -2,6 +2,10 @@
 
 A personal language learning journal that turns the material you collect into practice built around what you are learning.
 
+![A Spanish journal entry with vocabulary and translated sentences collected from the same conversation.](docs/images/journal-entry.png)
+
+*From a conversation to a journal entry, with words and sentences kept in context. Shown with sample content.*
+
 I'm building this for my own language learning and continuing to improve it as I use it. It also serves as a portfolio project: a place to explore interface design, browser-based storage, and AI-assisted practice in an app I want to keep using.
 
 The starting point is a journal entry—a class, a conversation, a textbook page, or something I want to remember. Words and sentences stay connected to those entries, and practice activities draw from that growing collection. The interface takes its cues from paper notebooks, with serif typography, ruled pages, and a dock for unfinished workbooks.
