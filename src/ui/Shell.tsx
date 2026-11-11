@@ -69,7 +69,7 @@ export const Shell = ({
           notebook rather than only from the practice page. */}
       <Dock />
     </nav>
-    <main className="content">{children}</main>
+    <main className="content" tabIndex={0}>{children}</main>
   </div>
 )
 
