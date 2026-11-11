@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { JournalDb } from '../db/db'
-import { buildContext, focusCandidates, selectSentences, selectWords } from './context'
+import { buildContext, focusCandidates, selectSentences, selectWords, sessionRng } from './context'
 import type { BundledSentence, BundledWord } from './sdk'
 import type { Familiarity, Word, WorkbookScope } from '../db/types'
+import { wordDrill } from './word-drill/manifest'
+import { cuePrompt, hintPrompt, markPrompt } from './word-drill/prompt'
 
 /**
  * `buildContext` against fixed fixtures for each `BundleRequest` shape. Owed by the plan.
@@ -89,6 +91,16 @@ describe('selectWords', () => {
     const out = selectWords(rows, { order: 'random' }, NOW, rng)
     expect(out).toHaveLength(rows.length)
     expect([...out.map((r) => r.word.term)].sort()).toEqual(['fresh', 'mid', 'never', 'old'])
+  })
+
+  it('keeps a random session order on reopen and varies it between sessions', () => {
+    const order = (sessionId: string) =>
+      selectWords(rows, { order: 'random' }, NOW, sessionRng(sessionId)).map((r) => r.word.id)
+    expect(order('session-a')).toEqual(order('session-a'))
+    const orders = new Set(Array.from({ length: 10 }, (_, i) => order(`session-${i}`).join(',')))
+    expect(orders.size).toBeGreaterThan(1)
+    const firstWords = new Set(Array.from({ length: 10 }, (_, i) => order(`session-${i}`)[0]))
+    expect(firstWords.size).toBeGreaterThan(1)
   })
 
   it('does not mutate what it was given', () => {
@@ -286,6 +298,41 @@ beforeEach(async () => {
 describe('buildContext', () => {
   /** The two test seams, in the bag the production call sites leave empty. */
   const deps = () => ({ d, now: NOW })
+
+  it('gives word drill vocabulary beyond its eight targets and learning context on every call', async () => {
+    const olderWords = Array.from({ length: 10 }, (_, i) => ({
+      ...word(`older-${i}`, `known-${i}`),
+      // No recent encounter: these must still be available as supporting vocabulary.
+      createdAt: daysAgo(100),
+      note: `learning-note-${i}`,
+    }))
+    await d.words.bulkAdd(olderWords)
+    await d.words.add({ ...word('foreign', 'foreign-word'), notebookId: 'other' })
+    const bundle = await buildContext('nb', wordDrill.request, undefined, {
+      ...deps(),
+      rng: sessionRng('word-drill-session'),
+    })
+    expect(bundle.words).toHaveLength(12)
+    const target = bundle.words[0]!
+    const contextOnly = bundle.words[8]!
+    const prompts = [
+      cuePrompt(target, bundle),
+      markPrompt(target, [{ ask: 'Say it simply.', answer: 'example' }], false, bundle),
+      ...([0, 1, 2] as const).map((rung) => hintPrompt(target, 'Say it simply.', bundle, rung)),
+    ]
+    for (const prompt of prompts) {
+      const input = prompt.input.map((message) => message.content).join('\n')
+      expect(input).toContain(contextOnly.word.term)
+      for (const older of olderWords) {
+        expect(input).toContain(older.term)
+        expect(input).toContain(older.note)
+      }
+      expect(input).toContain('제가 치울게요')
+      expect(input).toContain('the newer one')
+      expect(prompt.instructions).toContain('dinner with in-laws')
+      expect(input).not.toContain('foreign-word')
+    }
+  })
 
   it('returns nothing at all for an empty request', async () => {
     const bundle = await buildContext('nb', {}, undefined, deps())

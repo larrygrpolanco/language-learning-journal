@@ -7,8 +7,8 @@ import { plural } from '../../ui/format'
  * Word drill's manifest. Technical plan §8.
  *
  * `request` is the whole of what this exercise can see. It asks for the notebook profile because the
- * cue has to be plausible for the notebook, and for words it has met but not drilled much, which is
- * the set a drill is actually for.
+ * cue has to be plausible for the notebook. All vocabulary is available as supporting context;
+ * the workbook itself takes eight targets. Sentences and recent entries show familiar patterns.
  */
 const manifest: WorkbookManifest<DrillState> = {
   id: 'word-drill',
@@ -19,7 +19,9 @@ const manifest: WorkbookManifest<DrillState> = {
   icon: NotebookPen,
   request: {
     notebookProfile: true,
-    words: { limit: 8, order: 'least-practiced', recentDays: 60 },
+    words: { order: 'random' },
+    sentences: { limit: 20 },
+    entries: { limit: 5, includeBody: true },
   },
   /**
    * The line under the name on the practice page. UI guide §8 asks it to state what this draws from
@@ -30,10 +32,11 @@ const manifest: WorkbookManifest<DrillState> = {
    */
   describes: (b: ContextBundle) => {
     if (b.words.length === 0) return 'Nothing to draw on yet. Write a few entries first.'
-    const focus = b.words.filter((w) => w.focus).length
+    const targets = b.words.slice(0, 8)
+    const focus = targets.filter((w) => w.focus).length
     return focus > 0
-      ? `Drills the ${plural(focus, 'word')} you picked, then whatever else is due.`
-      : `Draws on ${plural(b.words.length, 'word')} you have met and barely practiced.`
+      ? `Drills the ${plural(focus, 'word')} you picked, then other notebook words in random order.`
+      : `Practices ${plural(targets.length, 'word')} in random order, with your notebook as context.`
   },
   Component: WordDrill,
 }

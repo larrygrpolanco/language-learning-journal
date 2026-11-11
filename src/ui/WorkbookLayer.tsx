@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Minus, X } from 'lucide-react'
 import { db } from '../db/db'
 import { workbookById } from '../workbooks'
-import { buildContext } from '../workbooks/context'
+import { buildContext, sessionRng } from '../workbooks/context'
 import { closeSession, dockSession, expandSession, saveSessionState, setSessionLabel } from '../workbooks/sessions'
 import { aiFor, journalWriterFor } from '../workbooks/writer'
 import { failureLine } from '../ai/client'
@@ -94,7 +94,9 @@ export const WorkbookLayer = () => {
         const notebook = await db.notebooks.get(session.notebookId)
         // The scope was resolved when the session opened, so restoring one rebuilds the same focus
         // even if the entries behind it have since been edited.
-        const bundle = await buildContext(session.notebookId, manifest.request, session.scope)
+        const bundle = await buildContext(session.notebookId, manifest.request, session.scope, {
+          rng: sessionRng(session.id),
+        })
         if (!live) return
 
         setLoaded({

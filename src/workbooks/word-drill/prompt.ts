@@ -1,5 +1,6 @@
 import type { BundledWord, ContextBundle, NotebookProfile } from '../sdk'
 import { exchangeLines, type Built, type Round } from '../drill'
+import { materialLines } from '../level'
 
 /**
  * The prompts for word-drill. Technical plan §8 keeps teaching logic per workbook, so it lives here
@@ -14,50 +15,66 @@ import { exchangeLines, type Built, type Round } from '../drill'
 const profileLine = (profile: NotebookProfile | undefined): string =>
   profile?.focus ? `This notebook is for: ${profile.focus}` : ''
 
-/**
- * The ways a cue can come at a word. Each forces something a bare "I X" does not supply: a form of
- * the word, a second clause, a listener, or a second word.
- */
-const ANGLES: readonly ((other: BundledWord | undefined) => string)[] = [
-  () =>
-    'Someone has just said something to them. Give that person\'s line, and ask how they would reply using the word.',
-  () => 'They need to give a reason or an excuse, so the answer needs a "because" or a "so".',
-  () => 'Something that already happened. They are telling someone about it, so the answer is in the past.',
-  () => 'They need to ask someone something, so the answer is a question with the word in it.',
-  () =>
-    'They need to turn something down, disagree, or say something has not happened yet, so the answer is negative.',
-  () => 'They are offering to do something for someone, or saying what they are about to do.',
-  (other) =>
-    other
-      ? `The situation needs both this word and "${other.word.term}"${other.word.meaning ? ` (${other.word.meaning})` : ''}. Name that second word in the prompt as written.`
-      : 'They are telling someone what someone else did, so the answer is about a third person.',
+/** The whole vocabulary, plus examples of how the learner has been using it. */
+const learningContext = (bundle: ContextBundle): string =>
+  [
+    bundle.profile?.title ? `Notebook: ${bundle.profile.title}` : '',
+    materialLines(bundle),
+    ...bundle.words
+      .filter((w) => w.word.note)
+      .map((w) => `Note for ${w.word.term}: ${w.word.note}`),
+    ...bundle.sentences
+      .filter((s) => s.sentence.note)
+      .map((s) => `Note for ${s.sentence.text}: ${s.sentence.note}`),
+    bundle.entries.length > 0 ? 'Recent notebook entries (learning context):' : '',
+    ...bundle.entries.map((e) =>
+      [e.date, e.title, e.body].filter((line) => line !== undefined && line !== '').join('\n'),
+    ),
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+/** Vary the use without adding clauses, extra vocabulary, or advanced grammar. */
+const ANGLES: readonly string[] = [
+  'Ask for a simple statement about yourself or someone else.',
+  'Ask for one simple yes/no question using the word.',
+  'Ask for a simple negative statement using the word.',
+  'Ask for a simple statement about today or tomorrow, only if it fits the word.',
 ]
+
+/** Apply the same limits to cues, follow-ups, corrections, and help. */
+const beginnerRules = [
+  '- The learner is a beginner practicing everyday speech. One short, simple sentence is a complete answer.',
+  '- Build the expected answer from the notebook vocabulary below, plus basic everyday words, particles, pronouns, and endings. If that needs unfamiliar vocabulary, simplify the task.',
+  '- Look across the other notebook words, saved sentences, notes, and recent entries to understand what they are learning. Prefer a familiar topic and a basic sentence pattern already in the notebook.',
+  '- Naturally combine the target word with another familiar notebook word when they fit in one simple sentence. For example, a known person, place, or time word can support the target. Do not force unrelated words together or turn this into a vocabulary checklist.',
+  '- Saved sentences and entries show learning context, not proof of mastery. Reuse their simplest patterns and do not copy their harder grammar or invent personal details.',
+  '- Use basic grammar and ordinary polite speech. Do not require reasons, explanations, multiple clauses, or special politeness shifts.',
+  '- Each prompt asks for just one thing in one short sentence, ideally 6–14 words in English or a similarly brief line in the requested language. No backstory or multi-step tasks.',
+  '- For example, for a word meaning "to get married": "Ask your friend if they are married." or "Say you want to get married." Never ask for wedding plans, an offer of help, or several details.',
+].join('\n')
 
 const pick = <T>(xs: readonly T[]): T | undefined => xs[Math.floor(Math.random() * xs.length)]
 
 /**
  * Asks for one cue for a word.
  *
- * The cue is a use, not a definition. "How would you tell your mother-in-law you will clear the table"
- * is a prompt worth answering; "what does 치우다 mean" is a flashcard, and the learner already has the
- * meaning written next to the word on the words screen.
+ * Ask for an everyday use of the word, answerable with one basic sentence.
  */
 export const cuePrompt = (word: BundledWord, bundle: ContextBundle): Built => {
   const language = bundle.profile?.language ?? 'the target language'
   const meaning = bundle.profile?.meaningLanguage ?? 'English'
-  const other = pick(bundle.words.filter((w) => w.word.id !== word.word.id))
-  const angle = pick(ANGLES)?.(other) ?? ''
+  const angle = pick(ANGLES) ?? ''
 
   return {
     instructions: [
       `You write one drill prompt for someone learning ${language}.`,
       profileLine(bundle.profile),
+      beginnerRules,
       '',
       `- Write the prompt in ${meaning}. Never include the ${language} answer in it.`,
-      '- Give a specific situation: who they are talking to and what just happened or what they want. Then ask what they would say.',
       `- The angle for this one: ${angle}`,
-      '- It must not be answerable with a bare textbook sentence. If three words would do, make the situation ask for more.',
-      '- One or two sentences. No preamble, no "Try to", no encouragement.',
+      '- A short textbook sentence is welcome. No preamble, no encouragement.',
       '- Keep it plausible for this notebook rather than generic.',
       '- Reply with the prompt itself and nothing else.',
     ]
@@ -70,6 +87,7 @@ export const cuePrompt = (word: BundledWord, bundle: ContextBundle): Built => {
           `Word: ${word.word.term}`,
           word.word.meaning ? `Meaning: ${word.word.meaning}` : '',
           word.word.note ? `Note: ${word.word.note}` : '',
+          learningContext(bundle),
         ]
           .filter((l) => l !== '')
           .join('\n'),
@@ -85,8 +103,8 @@ export const cuePrompt = (word: BundledWord, bundle: ContextBundle): Built => {
  * even if something else in the sentence is off, and the better version carries the correction instead.
  *
  * The follow-up is written by the same call rather than a second one, because it has to react to what
- * they wrote and this is the call that has read it. It carries the situation on and asks for something
- * the last answer did not need, which is what stops a right answer from being the end of the word.
+ * they wrote and this is the call that has read it. Follow-ups give another simple use at the same
+ * level, without turning practice into a steadily harder task.
  */
 export const markPrompt = (
   word: BundledWord,
@@ -100,19 +118,20 @@ export const markPrompt = (
   const next = last
     ? ['- "next" is an empty string. This was the last round.']
     : [
-        `- "next" is the follow-up prompt, in ${meaning}. Carry the situation on: react to what they said the way the other person would, then ask for something their last answer did not need. A different form of ${word.word.term} (past, negative, a question, more or less polite), a reason, a consequence, or a detail.`,
-        `- If they got ${word.word.term} wrong, "next" gives them another go at the same kind of use in a slightly different situation.`,
-        `- "next" is one or two sentences and never contains the ${language} answer.`,
+        `- "next" is the follow-up prompt, in ${meaning}. Ask for another everyday use of ${word.word.term} at the same beginner level, such as a simple statement or yes/no question. Do not increase difficulty or add a reason, consequence, or extra detail.`,
+        `- If they got ${word.word.term} wrong, "next" gives them another go at the same kind of use with an equally simple or simpler task.`,
+        `- "next" is one short sentence and never contains the ${language} answer.`,
       ]
 
   return {
     instructions: [
       `You are running a short back-and-forth drill on one ${language} word, for someone keeping a learning journal.`,
       profileLine(bundle.profile),
+      beginnerRules,
       '',
       `- "right" is true when they used ${word.word.term} in a way that works. Something else being slightly off does not make it wrong.`,
-      `- "comment" is one line in ${meaning}. If it went wrong, what went wrong. If it worked but was plain, the one thing that would make it sound more natural. Nothing else.`,
-      `- "better" is a natural ${language} version of what they were trying to say. If theirs was already natural, add one natural touch: a connector, an ending, a small detail. Keep it close enough to theirs to compare.`,
+      `- "comment" is one line in ${meaning}. If it went wrong, what went wrong. If it worked, briefly say that the usage is correct. Do not treat a simple answer as a problem.`,
+      `- "better" is a natural ${language} version of what they were trying to say. Correct only what needs fixing and keep it short and beginner-friendly. If theirs was already natural, return it unchanged. Do not add connectors or details.`,
       ...next,
       '- No praise, no scores, no exclamation marks.',
     ]
@@ -124,6 +143,7 @@ export const markPrompt = (
         content: [
           `Word being drilled: ${word.word.term}`,
           word.word.meaning ? `Meaning: ${word.word.meaning}` : '',
+          learningContext(bundle),
           '',
           exchangeLines(rounds),
           '',
@@ -144,8 +164,8 @@ export const markPrompt = (
  * rung is its own press.
  *
  * Rung 2 is deliberately the harder one to write. "The shape of the answer" has to be enough to
- * unstick someone without being the answer with a word missing, which is why it asks for the grammar
- * by name and forbids a filled-in example.
+ * unstick someone without being the answer with a word missing, so it describes the basic pattern
+ * in plain language and forbids a filled-in example.
  */
 export const hintPrompt = (
   word: BundledWord,
@@ -164,8 +184,8 @@ export const hintPrompt = (
     ],
     1: [
       `- Give the shape of an answer, in ${meaning}: which ending or construction it wants, and roughly how long.`,
-      `- Name the grammar. Do not write a filled-in ${language} sentence, and do not use the drilled word in a sentence.`,
-      '- Two sentences at most.',
+      `- Describe the basic pattern in plain language. Do not write a filled-in ${language} sentence, and do not use the drilled word in a sentence.`,
+      '- One short sentence.',
     ],
     2: [
       `- Write one natural ${language} sentence that answers the prompt using ${word.word.term}.`,
@@ -177,6 +197,7 @@ export const hintPrompt = (
     instructions: [
       `Someone learning ${language} is stuck on a drill prompt and has asked for help.`,
       profileLine(bundle.profile),
+      beginnerRules,
       '',
       ...rules[rung],
     ]
@@ -189,6 +210,7 @@ export const hintPrompt = (
           `Word being drilled: ${word.word.term}`,
           word.word.meaning ? `Meaning: ${word.word.meaning}` : '',
           `They were asked: ${ask}`,
+          learningContext(bundle),
         ]
           .filter((l) => l !== '')
           .join('\n'),

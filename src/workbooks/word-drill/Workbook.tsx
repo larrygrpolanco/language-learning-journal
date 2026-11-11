@@ -7,8 +7,8 @@ import type { BundledWord, WorkbookProps } from '../sdk'
  * Word drill. The first workbook, and the shape every later one follows.
  *
  * One word at a time from the bundle. The cue asks for a use rather than a definition, the answer is
- * typed, and marking gives one line, a natural version, and a follow-up that takes the same word one
- * step further. Up to three rounds a word, and moving on is always one press. Practice events are
+ * typed, and marking gives one line, a natural version, and a follow-up for another simple use of
+ * the word. Up to three rounds a word, and moving on is always one press. Practice events are
  * recorded per answer, so the familiarity estimate on the words screen has something to work from.
  *
  * The loop itself is `workbooks/drill.tsx`, shared with sentence drill. What is here is what makes it a
@@ -29,6 +29,8 @@ const view = (w: BundledWord): DrillItem => ({
 
 export const WordDrill = (props: WorkbookProps<DrillState>) => {
   const { bundle } = props
+  // Keep the session short while giving every prompt access to the whole vocabulary.
+  const items = useMemo(() => bundle.words.slice(0, 8), [bundle])
 
   const prompts = useMemo<DrillPrompts<BundledWord>>(
     () => ({
@@ -43,7 +45,7 @@ export const WordDrill = (props: WorkbookProps<DrillState>) => {
     <Drill
       {...props}
       workbookId="word-drill"
-      items={bundle.words}
+      items={items}
       view={view}
       prompts={prompts}
       noun="word"
