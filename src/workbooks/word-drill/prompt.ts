@@ -1,3 +1,4 @@
+import { productionRules } from '../pedagogy'
 import type { BundledWord, ContextBundle, NotebookProfile } from '../sdk'
 import { exchangeLines, type Built, type Round } from '../drill'
 import { materialLines } from '../level'
@@ -6,10 +7,8 @@ import { materialLines } from '../level'
  * The prompts for word-drill. Technical plan §8 keeps teaching logic per workbook, so it lives here
  * rather than in `ai/`.
  *
- * All of these go to the quick model, which does not deliberate. So anything that needs a decision
- * the model would otherwise have to reason its way to is made here in code instead: which angle a cue
- * takes is picked at random below, rather than asking the model to be varied and getting the same
- * "how would you say you did X" eight times.
+ * Cues start from a concrete use supported by the notebook. Follow-ups keep the learning target
+ * stable rather than choosing new grammar at random.
  */
 
 const profileLine = (profile: NotebookProfile | undefined): string =>
@@ -34,14 +33,6 @@ const learningContext = (bundle: ContextBundle): string =>
     .filter(Boolean)
     .join('\n\n')
 
-/** Vary the use without adding clauses, extra vocabulary, or advanced grammar. */
-const ANGLES: readonly string[] = [
-  'Ask for a simple statement about yourself or someone else.',
-  'Ask for one simple yes/no question using the word.',
-  'Ask for a simple negative statement using the word.',
-  'Ask for a simple statement about today or tomorrow, only if it fits the word.',
-]
-
 /** Apply the same limits to cues, follow-ups, corrections, and help. */
 const beginnerRules = [
   '- The learner is a beginner practicing everyday speech. One short, simple sentence is a complete answer.',
@@ -54,8 +45,6 @@ const beginnerRules = [
   '- For example, for a word meaning "to get married": "Ask your friend if they are married." or "Say you want to get married." Never ask for wedding plans, an offer of help, or several details.',
 ].join('\n')
 
-const pick = <T>(xs: readonly T[]): T | undefined => xs[Math.floor(Math.random() * xs.length)]
-
 /**
  * Asks for one cue for a word.
  *
@@ -64,16 +53,16 @@ const pick = <T>(xs: readonly T[]): T | undefined => xs[Math.floor(Math.random()
 export const cuePrompt = (word: BundledWord, bundle: ContextBundle): Built => {
   const language = bundle.profile?.language ?? 'the target language'
   const meaning = bundle.profile?.meaningLanguage ?? 'English'
-  const angle = pick(ANGLES) ?? ''
 
   return {
     instructions: [
       `You write one drill prompt for someone learning ${language}.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       beginnerRules,
       '',
       `- Write the prompt in ${meaning}. Never include the ${language} answer in it.`,
-      `- The angle for this one: ${angle}`,
+      '- First round: specify one concrete message to express using a simple pattern found in the notebook. Prefer a statement; require a question or negative only when the notebook provides that form.',
       '- A short textbook sentence is welcome. No preamble, no encouragement.',
       '- Keep it plausible for this notebook rather than generic.',
       '- Reply with the prompt itself and nothing else.',
@@ -103,8 +92,7 @@ export const cuePrompt = (word: BundledWord, bundle: ContextBundle): Built => {
  * even if something else in the sentence is off, and the better version carries the correction instead.
  *
  * The follow-up is written by the same call rather than a second one, because it has to react to what
- * they wrote and this is the call that has read it. Follow-ups give another simple use at the same
- * level, without turning practice into a steadily harder task.
+ * they wrote and this is the call that has read it. Follow-ups first support repair, then fade guidance while keeping the same pattern and level.
  */
 export const markPrompt = (
   word: BundledWord,
@@ -118,8 +106,8 @@ export const markPrompt = (
   const next = last
     ? ['- "next" is an empty string. This was the last round.']
     : [
-        `- "next" is the follow-up prompt, in ${meaning}. Ask for another everyday use of ${word.word.term} at the same beginner level, such as a simple statement or yes/no question. Do not increase difficulty or add a reason, consequence, or extra detail.`,
-        `- If they got ${word.word.term} wrong, "next" gives them another go at the same kind of use with an equally simple or simpler task.`,
+        `- "next" is the follow-up prompt, in ${meaning}. Keep practicing the same use of ${word.word.term}: first change one concrete fact in the same pattern, then ask for a fresh short use without a pattern hint. Keep grammar at the same beginner level; do not add reasons, consequences, or extra details.`,
+        `- If they got ${word.word.term} wrong, "next" asks them to repair the same sentence with one specific cue about the target error, without giving the corrected answer. Do not switch to a new task before they can repair it.`,
         `- "next" is one short sentence and never contains the ${language} answer.`,
       ]
 
@@ -127,9 +115,10 @@ export const markPrompt = (
     instructions: [
       `You are running a short back-and-forth drill on one ${language} word, for someone keeping a learning journal.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       beginnerRules,
       '',
-      `- "right" is true when they used ${word.word.term} in a way that works. Something else being slightly off does not make it wrong.`,
+      `- "right" is true only when the answer fulfills the last cue and uses ${word.word.term} with the intended meaning and form. A correct word in an unrelated sentence is not enough. Minor unrelated slips do not make it wrong.`,
       `- "comment" is one line in ${meaning}. If it went wrong, what went wrong. If it worked, briefly say that the usage is correct. Do not treat a simple answer as a problem.`,
       `- "better" is a natural ${language} version of what they were trying to say. Correct only what needs fixing and keep it short and beginner-friendly. If theirs was already natural, return it unchanged. Do not add connectors or details.`,
       ...next,
@@ -197,6 +186,7 @@ export const hintPrompt = (
     instructions: [
       `Someone learning ${language} is stuck on a drill prompt and has asked for help.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       beginnerRules,
       '',
       ...rules[rung],

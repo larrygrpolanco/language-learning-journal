@@ -10,8 +10,8 @@ import { failureLine } from '../ai/client'
  *
  * The third press records `'shown'`. That matters because `estimateFamiliarity` counts only `'right'`,
  * so taking the answer leaves the word exactly where it was on the words screen. Nothing is deducted
- * and nothing is said about it: credit is withheld rather than a penalty applied. No code branches on
- * `'shown'` anywhere, which is what keeps §16's ban on automatic difficulty adjustment true.
+ * and no penalty is applied. Callers may track a reveal to distinguish supported practice from
+ * independent production; a reveal does not change the learner's difficulty level.
  *
  * The policy lives here and only here. A workbook supplies three reveals and gets told when the third
  * one is taken; it does not get to decide how many rungs there are, which one costs, or what the
@@ -41,8 +41,10 @@ const LABELS = ['Stuck?', 'A bit more', 'Just show me'] as const
 export const Support = ({
   rungs,
   onSpend,
+  disabled = false,
 }: {
   rungs: Ladder
+  disabled?: boolean
   /** Fired once, after the third rung has actually resolved. Where `'shown'` gets recorded. */
   onSpend?: () => void
 }) => {
@@ -84,7 +86,7 @@ export const Support = ({
       {error ? <p className="st-error">{error}</p> : null}
 
       {done ? null : (
-        <button className="btn btn-ghost sup-btn" disabled={busy} onClick={() => void climb()}>
+        <button className="btn btn-ghost sup-btn" disabled={busy || disabled} onClick={() => void climb()}>
           {busy ? '…' : LABELS[next]}
         </button>
       )}

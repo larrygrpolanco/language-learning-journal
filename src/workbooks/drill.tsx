@@ -6,6 +6,7 @@ import { Capturable } from '../ui/Capturable'
 import { Speak } from '../ui/Speak'
 import { Support, type Ladder } from '../ui/Support'
 import { plural } from '../ui/format'
+import { drillOutcome } from './pedagogy'
 import type { WorkbookProps } from './sdk'
 
 /**
@@ -15,9 +16,9 @@ import type { WorkbookProps } from './sdk'
  * logic is (§8).
  *
  * The follow-up is the point. One cue and one answer lets a learner write the plainest sentence that
- * contains the word and move on, which proves they can spell it. A second and third round that react
- * to what they wrote and ask for something the last answer did not need — the past, a reason, a
- * question, a different person — is where the word gets used rather than placed.
+ * contains the word and move on. A second and third round keep the target stable, offer a repair
+ * when needed, and fade explicit guidance before asking for a fresh use. New grammar is not a
+ * default way to increase difficulty.
  *
  * Every call here goes to the quick model. Each is one short answer, and the wait between rounds is
  * the difference between an exchange and a form.
@@ -71,6 +72,8 @@ export interface Round {
   ask: string
   answer?: string
   verdict?: Verdict
+  /** A complete model answer was revealed before submission. */
+  modelShown?: boolean
 }
 
 /**
@@ -88,6 +91,7 @@ export const exchangeLines = (rounds: readonly Round[]): string =>
         `  Asked: ${r.ask}`,
         r.answer !== undefined ? `  Answered: ${r.answer}` : '',
         r.verdict ? `  Your comment: ${r.verdict.comment}` : '',
+        r.modelShown ? '  Support: a model answer was shown; this was supported practice.' : '',
       ]
         .filter((l) => l !== '')
         .join('\n'),
@@ -175,6 +179,7 @@ export const Drill = <T,>({
 
   const [answer, setAnswer] = useState('')
   const [busy, setBusy] = useState(false)
+  const [hintBusy, setHintBusy] = useState(false)
   const [error, setError] = useState<string>()
   const [saved, setSaved] = useState(false)
 
@@ -231,13 +236,13 @@ export const Drill = <T,>({
 
   const submit = async () => {
     const text = answer.trim()
-    if (item === undefined || shown === undefined || !open || text === '' || busy) return
+    if (item === undefined || shown === undefined || !open || text === '' || busy || hintBusy) return
 
     setBusy(true)
     setError(undefined)
     try {
       const before = rounds.slice(0, -1)
-      const answered: Round[] = [...before, { ask: open.ask, answer: text }]
+      const answered: Round[] = [...before, { ...open, answer: text }]
       const final = answered.length >= MAX_ROUNDS
 
       const p = prompts.mark(item, answered, final)
@@ -253,17 +258,21 @@ export const Drill = <T,>({
         workbookId,
         targetType: shown.targetType,
         targetId: shown.id,
-        outcome: verdict.right ? 'right' : 'wrong',
+        outcome: drillOutcome(verdict.right, open.modelShown === true),
       })
 
-      const marked: Round[] = [...before, { ask: open.ask, answer: text, verdict }]
+      const marked: Round[] = [...before, { ...open, answer: text, verdict }]
       const follow = verdict.next.trim()
-      const nextRounds = !final && follow !== '' ? [...marked, { ask: follow }] : marked
+      // Repair follows a visible correction, so it is supported practice.
+      const nextRounds =
+        !final && follow !== ''
+          ? [...marked, { ask: follow, modelShown: !verdict.right }]
+          : marked
 
       const prev = done[shown.id]
       const nextDone = {
         ...done,
-        [shown.id]: { answers: [...(prev?.answers ?? []), text], right: verdict.right },
+        [shown.id]: { answers: [...(prev?.answers ?? []), text], right: verdict.right && !open.modelShown },
       }
 
       setRounds(nextRounds)
@@ -295,14 +304,24 @@ export const Drill = <T,>({
   const hint = (rung: 0 | 1 | 2) => async () => {
     if (item === undefined || !open) throw new Error('nothing to help with yet')
     const p = prompts.hint(item, open.ask, rung)
-    return ai.complete(p.input, { instructions: p.instructions, quick: true })
+    setHintBusy(true)
+    try {
+      return await ai.complete(p.input, { instructions: p.instructions, quick: true })
+    } finally {
+      setHintBusy(false)
+    }
   }
 
   const ladder: Ladder = [hint(0), hint(1), hint(2)]
 
   /** Rung 3 taken. Recorded, and deliberately inert: nothing counts `'shown'` toward "got it". */
   const spend = () => {
-    if (shown === undefined) return
+    if (shown === undefined || !open) return
+    const next = rounds.map((r, i) =>
+      i === rounds.length - 1 ? { ...r, modelShown: true } : r,
+    )
+    setRounds(next)
+    setState({ at, rounds: next, done })
     void journal.recordPractice({
       workbookId,
       targetType: shown.targetType,
@@ -406,6 +425,7 @@ export const Drill = <T,>({
             <>
               <p className={r.verdict.right ? 'wb-verdict wb-verdict-right' : 'wb-verdict'}>
                 {r.verdict.comment}
+                {r.modelShown ? ' · Practiced with a model answer.' : ''}
               </p>
               <div className="wb-better">
                 <Capturable notebookId={bundle.notebookId} className="sentence">
@@ -421,7 +441,14 @@ export const Drill = <T,>({
       {error ? <p className="st-error">{error}</p> : null}
 
       {/* Keyed on the item and the round, so the ladder resets per question. */}
-      {open ? <Support key={`${shown.id}:${rounds.length}`} rungs={ladder} onSpend={spend} /> : null}
+      {open ? (
+        <Support
+          key={`${shown.id}:${rounds.length}`}
+          rungs={ladder}
+          onSpend={spend}
+          disabled={busy}
+        />
+      ) : null}
 
       <div className="wb-actions">
         <span className="text-muted wb-count">
@@ -431,19 +458,19 @@ export const Drill = <T,>({
         {open ? (
           <>
             {/* Past the first round, moving on is finishing rather than skipping. */}
-            <button className="btn btn-ghost" disabled={busy} onClick={advance}>
+            <button className="btn btn-ghost" disabled={busy || hintBusy} onClick={advance}>
               {rounds.length > 1 ? nextLabel : 'Skip'}
             </button>
             <button
               className="btn btn-primary"
-              disabled={busy || answer.trim() === ''}
+              disabled={busy || hintBusy || answer.trim() === ''}
               onClick={() => void submit()}
             >
               Answer
             </button>
           </>
         ) : (
-          <button className="btn btn-primary" disabled={busy} onClick={advance}>
+          <button className="btn btn-primary" disabled={busy || hintBusy} onClick={advance}>
             {nextLabel}
           </button>
         )}

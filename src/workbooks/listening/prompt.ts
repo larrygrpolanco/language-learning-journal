@@ -66,7 +66,7 @@ export const isDialog = (v: unknown): v is Dialog => {
   const o = v as Record<string, unknown>
   const strings = (x: unknown) => Array.isArray(x) && x.every((s) => typeof s === 'string')
 
-  if (!strings(o.speakers) || (o.speakers as string[]).length < 2) return false
+  if (!strings(o.speakers) || (o.speakers as string[]).length !== 2) return false
   if (!strings(o.questions) || (o.questions as string[]).length === 0) return false
   if (!strings(o.used)) return false
   if (!Array.isArray(o.turns) || o.turns.length === 0) return false
@@ -74,7 +74,7 @@ export const isDialog = (v: unknown): v is Dialog => {
   return o.turns.every((t: unknown) => {
     if (typeof t !== 'object' || t === null) return false
     const turn = t as Record<string, unknown>
-    return typeof turn.speaker === 'number' && typeof turn.line === 'string'
+    return (turn.speaker === 0 || turn.speaker === 1) && typeof turn.line === 'string' && turn.line.trim() !== ''
   })
 }
 
@@ -99,7 +99,7 @@ export const dialogPrompt = (bundle: ContextBundle): { instructions: string; inp
       '- Build it around the sentences listed below. Use them close to as written, in a situation where someone would say them.',
       '- Spoken register. Contractions, fragments, the way people actually talk. This is heard, not read.',
       '- One line per turn. Nothing anyone would need to read twice.',
-      `- The questions are in ${meaning} and answerable from the dialog alone. Ask about what happened, not about grammar.`,
+      `- The questions are in ${meaning}: one gist question first, then one or two specific-detail questions. Each asks for one fact explicitly stated in the audio, with a clear speaker or referent. No grammar questions, inference about unstated motives, or multi-part questions. Do not reveal the answers in the questions.`,
       '',
       levelRules(bundle),
       '',
@@ -169,7 +169,7 @@ export const markPrompt = (
       '',
       '- One mark per question, in order. Every question gets one.',
       '- "right" is true when their answer shows they followed what happened. Loose wording is fine.',
-      `- "comment" is one line in ${meaning}. What they got, or what they missed. Nothing else.`,
+      `- "comment" is one line in ${meaning}: give the correct fact and identify the speaker plus a short quoted audio phrase that supports it, especially after a wrong answer. Accept answers in either language; do not grade spelling or target-language production.`,
       '- No praise, no scores, no exclamation marks.',
       '- An empty answer is wrong, and the comment says what the answer was.',
     ].join('\n'),

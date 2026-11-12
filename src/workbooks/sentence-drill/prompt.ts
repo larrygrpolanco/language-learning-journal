@@ -1,5 +1,7 @@
+import { productionRules } from '../pedagogy'
 import type { BundledSentence, ContextBundle, NotebookProfile } from '../sdk'
 import { exchangeLines, type Built, type Round } from '../drill'
+import { materialLines } from '../level'
 
 /**
  * The prompts for sentence-drill. Technical plan §8.
@@ -8,25 +10,13 @@ import { exchangeLines, type Built, type Round } from '../drill'
  * here asks for the pattern bent to a new situation: a different thing, a different time, a different
  * listener. That is the difference between knowing a sentence and being able to use it.
  *
- * All quick-model calls, like word drill's, and for the same reason the angle is picked in code.
+ * The first cue changes one fact; follow-ups keep that pattern and fade explicit guidance.
  */
 
 const profileLine = (profile: NotebookProfile | undefined): string =>
   profile?.focus ? `This notebook is for: ${profile.focus}` : ''
 
-/** The ways a cue can bend a sentence. Each changes one thing and keeps the rest of the pattern. */
-const ANGLES: readonly string[] = [
-  'Same pattern, different content: a different thing, person or place in a new situation.',
-  'Change the time: the same kind of thing, but something that already happened or is going to happen.',
-  'Someone says this sentence, or one like it, to them. They reply.',
-  'They are saying it to someone of a different standing (a close friend rather than an elder, or the reverse), so the politeness level changes.',
-  'The opposite situation: they need the negative, or to turn it down.',
-  'They need to turn it into a question to ask someone, or, if it is a question, to answer it.',
-  'Extend it: the same sentence with a reason, a time or a condition added.',
-]
-
-const pick = <T>(xs: readonly T[]): T | undefined => xs[Math.floor(Math.random() * xs.length)]
-
+/** The source pattern and its meaning, supplied to every generation and feedback call. */
 const itemLines = (s: BundledSentence): string[] =>
   [
     `Sentence: ${s.sentence.text}`,
@@ -43,10 +33,11 @@ export const cuePrompt = (sentence: BundledSentence, bundle: ContextBundle): Bui
     instructions: [
       `You write one drill prompt for someone learning ${language}. They can see the sentence below and its translation.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       '',
       `- Write the prompt in ${meaning}. Never include the ${language} answer in it, and do not repeat the sentence.`,
       '- The answer should reuse the sentence\'s pattern, its grammar and its key phrase, in a new situation. Not repeat it.',
-      `- The angle for this one: ${pick(ANGLES) ?? ''}`,
+      '- First round: keep the original grammar and register. Change exactly one concrete fact (person, object, or place), and specify its replacement. Give an incidental replacement word with a gloss if it is not in the notebook.',
       '- Give a specific situation: who they are talking to and what is going on. Then ask what they would say.',
       '- One or two sentences. No preamble, no "Try to", no encouragement.',
       '- Keep it plausible for this notebook rather than generic.',
@@ -54,7 +45,7 @@ export const cuePrompt = (sentence: BundledSentence, bundle: ContextBundle): Bui
     ]
       .filter((l) => l !== '')
       .join('\n'),
-    input: [{ role: 'user', content: itemLines(sentence).join('\n') }],
+    input: [{ role: 'user', content: [...itemLines(sentence), materialLines(bundle)].join('\n') }],
   }
 }
 
@@ -76,8 +67,8 @@ export const markPrompt = (
   const next = last
     ? ['- "next" is an empty string. This was the last round.']
     : [
-        `- "next" is the follow-up prompt, in ${meaning}. Carry the situation on: react to what they said the way the other person would, then ask them to bend the pattern a different way than last time: another time, another listener, the negative, a question, or a reason added.`,
-        '- If they lost the pattern, "next" gives them another go at the same change in a slightly different situation.',
+        `- "next" is the follow-up prompt, in ${meaning}. Stay with the same grammar and register. After the first successful use, change one concrete fact again with less pattern guidance. After another success, ask for the same pattern in a fresh specific situation. Do not introduce a new tense, negation, connector, or politeness shift unless it is already demonstrated in the supplied material.`,
+        '- If they lost the pattern, "next" asks them to repair their last answer, naming one target issue without supplying the correction. Keep the same facts and grammar.',
         `- "next" is one or two sentences and never contains the ${language} answer.`,
       ]
 
@@ -85,10 +76,11 @@ export const markPrompt = (
     instructions: [
       `You are running a short back-and-forth drill on one ${language} sentence pattern, for someone keeping a learning journal.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       '',
       '- "right" is true when their answer reuses the pattern of the sentence correctly for what was asked. Something else being slightly off does not make it wrong.',
-      `- "comment" is one line in ${meaning}. If it went wrong, what happened to the pattern. If it worked but was plain, the one thing that would make it sound more natural. Nothing else.`,
-      `- "better" is a natural ${language} version of what they were trying to say. If theirs was already natural, add one natural touch. Keep it close enough to theirs to compare.`,
+      `- "comment" is one line in ${meaning}. If it went wrong, what happened to the pattern. If it worked, briefly name what they used correctly. A simple complete answer needs no embellishment.`,
+      `- "better" is a natural ${language} version of what they were trying to say. Correct only what needs fixing. If theirs was already natural, return it unchanged. Preserve its meaning and length.`,
       ...next,
       '- No praise, no scores, no exclamation marks.',
     ]
@@ -97,7 +89,7 @@ export const markPrompt = (
     input: [
       {
         role: 'user',
-        content: [...itemLines(sentence), '', exchangeLines(rounds), '', 'Mark the last answer.'].join(
+        content: [...itemLines(sentence), materialLines(bundle), '', exchangeLines(rounds), '', 'Mark the last answer.'].join(
           '\n',
         ),
       },
@@ -136,11 +128,12 @@ export const hintPrompt = (
     instructions: [
       `Someone learning ${language} is stuck on a drill prompt and has asked for help.`,
       profileLine(bundle.profile),
+      productionRules(bundle),
       '',
       ...rules[rung],
     ]
       .filter((l) => l !== '')
       .join('\n'),
-    input: [{ role: 'user', content: [...itemLines(sentence), `They were asked: ${ask}`].join('\n') }],
+    input: [{ role: 'user', content: [...itemLines(sentence), materialLines(bundle), `They were asked: ${ask}`].join('\n') }],
   }
 }

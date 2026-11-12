@@ -124,7 +124,7 @@ export const Listening = ({
       const got = await ai.completeJson<Marks>(p.input, {
         name: 'listening_marks',
         schema: MARKS_SCHEMA,
-        guard: isMarks,
+        guard: (value): value is Marks => isMarks(value) && value.marks.length === dialog.questions.length,
         instructions: p.instructions,
         // Marking short answers against a dialog it is handed. Nothing here needs deliberation.
         quick: true,

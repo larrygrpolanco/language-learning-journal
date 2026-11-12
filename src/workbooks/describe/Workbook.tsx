@@ -63,6 +63,8 @@ export const Describe = ({
   const [redrawn, setRedrawn] = useState(false)
 
   const [busy, setBusy] = useState(false)
+  const [hintBusy, setHintBusy] = useState(false)
+  const [modelShown, setModelShown] = useState(false)
   const [error, setError] = useState<string>()
   const [saved, setSaved] = useState(false)
 
@@ -110,6 +112,7 @@ export const Describe = ({
       }
 
       await hold(await ai.draw(next.imagePrompt))
+      setModelShown(false)
       setState({ scene: next, description: brief ? '' : description })
     } catch (e) {
       setError(failureLine(e))
@@ -135,7 +138,7 @@ export const Describe = ({
 
   const submit = async () => {
     const text = description.trim()
-    if (!dataUrl || text === '' || verdict) return
+    if (!dataUrl || text === '' || verdict || busy || hintBusy) return
 
     setBusy(true)
     setError(undefined)
@@ -152,7 +155,7 @@ export const Describe = ({
 
       // The words they actually wrote, and only if the description worked. As in the roleplay, the
       // evidence has to be something they typed rather than something a model reports about them.
-      if (marked.right) {
+      if (marked.right && !modelShown) {
         for (const w of wordsUsedIn(bundle, text)) {
           await journal.recordPractice({
             workbookId: 'describe',
@@ -174,7 +177,12 @@ export const Describe = ({
     const p = hintPrompt(bundle, dataUrl, rung)
     // No `quick` on any of these. The non-reasoning model reads an image poorly enough that it is not
     // used where an attachment is the point.
-    return ai.complete(p.input, { instructions: p.instructions })
+    setHintBusy(true)
+    try {
+      return await ai.complete(p.input, { instructions: p.instructions })
+    } finally {
+      setHintBusy(false)
+    }
   }
 
   const ladder: Ladder = [hint(0), hint(1), hint(2)]
@@ -182,6 +190,7 @@ export const Describe = ({
   /** Rung 3 taken. Recorded against the words the scene was drawn to hold, and inert by design. */
   const spend = () => {
     if (!scene) return
+    setModelShown(true)
     for (const t of usedTargets(bundle, scene.used)) {
       void journal.recordPractice({ workbookId: 'describe', ...t, outcome: 'shown' })
     }
@@ -248,6 +257,10 @@ export const Describe = ({
         <p className="text-muted ds-note">Drawn again, so this is not quite the picture you had.</p>
       ) : null}
 
+      <p className="text-muted">
+        In 1–3 short sentences, name a person or object and say what they are doing or where they are.
+      </p>
+
       {verdict ? (
         <>
           <p className="ruled rf-answer">{description}</p>
@@ -255,7 +268,7 @@ export const Describe = ({
             {verdict.comment}
           </p>
           {verdict.missed.length > 0 ? (
-            <p className="ds-missed">You did not mention: {verdict.missed.join(', ')}</p>
+            <p className="ds-missed">You could add: {verdict.missed.join(', ')}</p>
           ) : null}
           <div className="wb-better">
             <Capturable notebookId={bundle.notebookId} className="sentence">
@@ -286,7 +299,7 @@ export const Describe = ({
 
       {error ? <p className="st-error">{error}</p> : null}
 
-      {verdict ? null : <Support rungs={ladder} onSpend={spend} />}
+      {verdict ? null : <Support rungs={ladder} onSpend={spend} disabled={busy} />}
 
       <div className="wb-actions">
         {verdict ? (
@@ -305,7 +318,7 @@ export const Describe = ({
         ) : (
           <button
             className="btn btn-primary"
-            disabled={busy || description.trim() === ''}
+            disabled={busy || hintBusy || description.trim() === ''}
             onClick={() => void submit()}
           >
             Mark it

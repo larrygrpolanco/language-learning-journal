@@ -55,6 +55,10 @@ export const levelRules = (bundle: ContextBundle, reach: Reach = 'strict'): stri
 
   return [
     ...scope,
+    '- The notebook is evidence of exposure, not mastery. Keep grammar close to its simplest examples; common endings and connectors can still be unfamiliar.',
+    '- Recycle a small coherent subset of the material rather than packing every selected item into one text. Reuse it in new contexts before adding more.',
+    '- Keep names, referents, and the situation clear. Avoid difficulty from riddles, missing context, or ambiguous pronouns.',
+    '- Use ordinary target-language script; no romanization unless the language itself uses Latin script.',
     `- Do not teach. No glosses, no explanations, no "this means", no new vocabulary offered on the side.`,
     shape,
     `- Stay in ${language} unless the field being asked for says otherwise. ${meaning} appears only where it is asked for by name.`,

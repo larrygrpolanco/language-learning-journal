@@ -159,7 +159,7 @@ export const scenePrompt = (
     scene >= LAST_SCENE
       ? '- End the story here. Return an empty choices array.'
       : `- If the story has reached a natural ending, end it and return an empty choices array. Otherwise keep going.`,
-    '- The choices are actions, not answers to a question. Each one should lead somewhere different.',
+    '- The choices are short actions using familiar language, not answers to a quiz. Make their consequences distinct and understandable from the prose, so understanding matters more than guessing. The next scene must visibly follow the selected action. Recycle a small set of words and patterns across scenes in fresh contexts.',
     '- imagePrompt is in English and describes only what is visible. No text in the picture, no words on signs.',
     '',
     levelRules(bundle),
